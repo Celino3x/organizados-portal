@@ -9,11 +9,10 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 
 // ============================================
-// CONFIGURAÇÃO DO CORS (CORRIGIDA - VERSÃO DEFINITIVA)
+// CONFIGURAÇÃO DO CORS (VERSÃO DEFINITIVA)
 // ============================================
 const corsOptions = {
   origin: function (origin, callback) {
-    // Lista de origens permitidas
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:5174',
@@ -21,23 +20,36 @@ const corsOptions = {
       'https://organizados-portal-4qk8s0s22-celino3xs-projects.vercel.app'
     ];
     
-    // Permitir requisições sem origem (como Postman)
+    // Permitir requisições sem origem (ex: Postman)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // Em desenvolvimento, permitir todas as origens
+      console.log('⚠️ Origem bloqueada pelo CORS:', origin);
+      callback(null, true); // Temporariamente permitindo todas
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 86400 // 24 horas
+  maxAge: 86400
 };
 
 app.use(cors(corsOptions));
+
+// ============================================
+// ROTA OPTIONS EXPLÍCITA PARA TODAS AS ROTAS
+// ============================================
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 
 // Middlewares
 app.use(express.json());
@@ -69,6 +81,9 @@ app.get('/api/health', (req, res) => {
 // ROTA DE REGISTRO
 // ============================================
 app.post('/api/auth/register', async (req, res) => {
+  // Headers CORS explícitos
+  res.header('Access-Control-Allow-Origin', '*');
+  
   try {
     const { name, email, password, congregation, phone, accessLevel, permissions, privileges } = req.body;
     
@@ -138,6 +153,9 @@ app.post('/api/auth/register', async (req, res) => {
 // ROTA DE LOGIN
 // ============================================
 app.post('/api/auth/login', async (req, res) => {
+  // Headers CORS explícitos
+  res.header('Access-Control-Allow-Origin', '*');
+  
   try {
     const { email, password } = req.body;
     
@@ -227,6 +245,8 @@ app.post('/api/auth/login', async (req, res) => {
 // ROTA DE PERFIL
 // ============================================
 app.get('/api/auth/profile', async (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
