@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Portal Organizados
 
 Sistema de gestão para congregações das Testemunhas de Jeová.
@@ -25,3 +26,6 @@ Sistema de gestão para congregações das Testemunhas de Jeová.
 cd backend
 npm install
 npm run dev
+=======
+# organizados-portal
+>>>>>>> e226a3dc4373534311fb8c23b50cdba7797eea62
