@@ -9,19 +9,35 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 
 // ============================================
-// CONFIGURAÇÃO DO CORS (CORRIGIDA)
+// CONFIGURAÇÃO DO CORS (CORRIGIDA - VERSÃO DEFINITIVA)
 // ============================================
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'https://organizados-portal.vercel.app',
-    'https://organizados-portal-4qk8s0s22-celino3xs-projects.vercel.app'
-  ],
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Lista de origens permitidas
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'https://organizados-portal.vercel.app',
+      'https://organizados-portal-4qk8s0s22-celino3xs-projects.vercel.app'
+    ];
+    
+    // Permitir requisições sem origem (como Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400 // 24 horas
+};
+
+app.use(cors(corsOptions));
 
 // Middlewares
 app.use(express.json());
@@ -56,7 +72,6 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password, congregation, phone, accessLevel, permissions, privileges } = req.body;
     
-    // Validação básica
     if (!name || !email || !password || !congregation) {
       return res.status(400).json({ 
         success: false, 
@@ -64,12 +79,10 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
 
-    // Verificar se o modelo User existe
     let User;
     try {
       User = require('./models/User');
     } catch (e) {
-      // Se o modelo não existir, retorna sucesso simulado
       return res.status(201).json({ 
         success: true, 
         message: 'Usuário criado com sucesso (modo simulado - sem banco)!',
@@ -77,7 +90,6 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
 
-    // Verificar se usuário já existe
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -152,7 +164,6 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Tenta buscar no banco
     let User;
     try {
       User = require('./models/User');
@@ -226,7 +237,6 @@ app.get('/api/auth/profile', async (req, res) => {
       });
     }
 
-    // Token simulado para desenvolvimento
     if (token.startsWith('token_simulado_')) {
       return res.json({
         success: true,
