@@ -9,17 +9,20 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 
 // ============================================
-// CONFIGURAÇÃO DO CORS - SOLUÇÃO DEFINITIVA
+// CONFIGURAÇÃO DO CORS - VERSÃO ULTRA PERMISSIVA
 // ============================================
-// Permitir todas as origens
-app.use(cors());
+// Permitir todas as origens - útil para testes
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+}));
 
-// Middleware adicional para garantir headers CORS
+// Middleware para garantir headers CORS em todas as respostas
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -30,9 +33,24 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // ============================================
+// ROTA DE TESTE CORS
+// ============================================
+app.options('/api/test-cors', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(200);
+});
+
+app.get('/api/test-cors', (req, res) => {
+  res.json({ message: 'CORS funcionando!' });
+});
+
+// ============================================
 // ROTAS DIRETAS
 // ============================================
 
+// Rota raiz
 app.get('/', (req, res) => {
   res.json({ 
     message: '🚀 Portal Organizados API',
@@ -41,6 +59,7 @@ app.get('/', (req, res) => {
   });
 });
 
+// Rota de saúde
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -301,6 +320,7 @@ app.listen(PORT, () => {
   console.log(`📍 Registro: POST http://localhost:${PORT}/api/auth/register`);
   console.log(`📍 Login: POST http://localhost:${PORT}/api/auth/login`);
   console.log(`📍 Usuários: GET/POST http://localhost:${PORT}/api/users`);
+  console.log(`📍 Teste CORS: GET http://localhost:${PORT}/api/test-cors`);
   console.log(`\n📝 Credenciais de teste:`);
   console.log(`   Email: admin@organizados.com`);
   console.log(`   Senha: Admin@123\n`);
