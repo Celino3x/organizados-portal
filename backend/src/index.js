@@ -8,8 +8,22 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
+// ============================================
+// CONFIGURAÇÃO DO CORS (CORRIGIDA)
+// ============================================
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://organizados-portal.vercel.app',
+    'https://organizados-portal-4qk8s0s22-celino3xs-projects.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 // Middlewares
-app.use(cors());
 app.use(express.json());
 
 // ============================================
@@ -40,7 +54,7 @@ app.get('/api/health', (req, res) => {
 // ============================================
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password, congregation, phone } = req.body;
+    const { name, email, password, congregation, phone, accessLevel, permissions, privileges } = req.body;
     
     // Validação básica
     if (!name || !email || !password || !congregation) {
@@ -81,7 +95,11 @@ app.post('/api/auth/register', async (req, res) => {
       email,
       password: hashedPassword,
       congregation,
-      phone: phone || null
+      phone: phone || null,
+      accessLevel: accessLevel || 'viewer',
+      permissions: permissions || {},
+      privileges: privileges || ['publisher'],
+      isActive: true
     });
 
     res.status(201).json({
@@ -91,7 +109,8 @@ app.post('/api/auth/register', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        congregation: user.congregation
+        congregation: user.congregation,
+        accessLevel: user.accessLevel
       }
     });
   } catch (error) {
@@ -127,7 +146,8 @@ app.post('/api/auth/login', async (req, res) => {
           name: 'Admin Teste',
           email: 'admin@organizados.com',
           congregation: 'Vilar Guanabara',
-          role: 'admin'
+          role: 'admin',
+          accessLevel: 'admin'
         }
       });
     }
@@ -162,7 +182,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
+      { id: user._id, email: user.email, role: user.role, accessLevel: user.accessLevel },
       process.env.JWT_SECRET || 'organizados_secret',
       { expiresIn: '7d' }
     );
@@ -178,7 +198,9 @@ app.post('/api/auth/login', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        congregation: user.congregation
+        congregation: user.congregation,
+        accessLevel: user.accessLevel,
+        permissions: user.permissions
       }
     });
   } catch (error) {
@@ -213,7 +235,8 @@ app.get('/api/auth/profile', async (req, res) => {
           name: 'Admin Teste',
           email: 'admin@organizados.com',
           congregation: 'Vilar Guanabara',
-          role: 'admin'
+          role: 'admin',
+          accessLevel: 'admin'
         }
       });
     }
