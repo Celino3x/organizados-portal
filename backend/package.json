@@ -1,15 +1,23 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://organizados-api.onrender.com/api/$1"
-    }
-  ],
-  "dependencies": {
-    "@prisma/client": "^7.10.0",
-    "prisma": "^8.0.0-rc.13"
-  },
+  "name": "organizados-backend",
+  "version": "1.0.0",
+  "description": "API do Portal Organizados",
+  "main": "src/index.js",
   "scripts": {
-    "postinstall": "prisma skills sync || exit 0"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.5.0",
+    "nodemailer": "^6.9.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
