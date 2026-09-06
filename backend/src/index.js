@@ -9,16 +9,14 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 
 // ============================================
-// CONFIGURAÇÃO DO CORS - VERSÃO ULTRA PERMISSIVA
+// CONFIGURAÇÃO DO CORS
 // ============================================
-// Permitir todas as origens - útil para testes
 app.use(cors({
-  origin: '*', // Permite todas as origens (mais simples para testes)
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-// Middleware para garantir headers CORS em todas as respostas
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
@@ -29,7 +27,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middlewares
 app.use(express.json());
 
 // ============================================
@@ -50,7 +47,6 @@ app.get('/api/test-cors', (req, res) => {
 // ROTAS DIRETAS
 // ============================================
 
-// Rota raiz
 app.get('/', (req, res) => {
   res.json({ 
     message: '🚀 Portal Organizados API',
@@ -59,7 +55,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Rota de saúde
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -74,7 +69,7 @@ app.get('/api/health', (req, res) => {
 // ============================================
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password, congregation, phone, accessLevel, permissions, privileges } = req.body;
+    const { name, email, password, congregation, phone } = req.body;
     
     if (!name || !email || !password || !congregation) {
       return res.status(400).json({ 
@@ -111,11 +106,7 @@ app.post('/api/auth/register', async (req, res) => {
       email,
       password: hashedPassword,
       congregation,
-      phone: phone || null,
-      accessLevel: accessLevel || 'viewer',
-      permissions: permissions || {},
-      privileges: privileges || ['publisher'],
-      isActive: true
+      phone: phone || null
     });
 
     res.status(201).json({
@@ -125,8 +116,7 @@ app.post('/api/auth/register', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        congregation: user.congregation,
-        accessLevel: user.accessLevel
+        congregation: user.congregation
       }
     });
   } catch (error) {
@@ -152,7 +142,7 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Credenciais de teste para desenvolvimento
+    // Credenciais de teste
     if (email === 'admin@organizados.com' && password === 'Admin@123') {
       return res.json({
         success: true,
@@ -197,7 +187,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role, accessLevel: user.accessLevel },
+      { id: user._id, email: user.email },
       process.env.JWT_SECRET || 'organizados_secret',
       { expiresIn: '7d' }
     );
@@ -212,10 +202,7 @@ app.post('/api/auth/login', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        congregation: user.congregation,
-        accessLevel: user.accessLevel,
-        permissions: user.permissions
+        congregation: user.congregation
       }
     });
   } catch (error) {
@@ -249,8 +236,7 @@ app.get('/api/auth/profile', async (req, res) => {
           name: 'Admin Teste',
           email: 'admin@organizados.com',
           congregation: 'Vilar Guanabara',
-          role: 'admin',
-          accessLevel: 'admin'
+          role: 'admin'
         }
       });
     }
@@ -310,10 +296,10 @@ mongoose.connect(process.env.MONGODB_URI)
   });
 
 // ============================================
-// INICIAR SERVIDOR
+// INICIAR SERVIDOR (CORRIGIDO PARA O RENDER)
 // ============================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📍 http://localhost:${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
