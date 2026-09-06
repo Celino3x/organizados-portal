@@ -13,7 +13,7 @@ const app = express();
 // ============================================
 // Permitir todas as origens - útil para testes
 app.use(cors({
-  origin: '*',
+  origin: '*', // Permite todas as origens (mais simples para testes)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
