@@ -14,7 +14,9 @@ import {
   Plus,
   Download,
   Upload,
-  PlayCircle
+  PlayCircle,
+  Share2,
+  Globe
 } from 'lucide-react';
 import { territories, groups, getStatusLabel, getStatusBadge, getTypeLabel, Territory } from '../data/territories';
 import TerritoryMap from '../components/maps/TerritoryMap';
@@ -48,6 +50,25 @@ const TerritoriesPage: React.FC = () => {
     assigned: territories.filter(t => t.status === 'assigned').length,
     inProgress: territories.filter(t => t.status === 'in_progress').length,
     completed: territories.filter(t => t.status === 'completed').length
+  };
+
+  // Função para compartilhar o território publicamente
+  const handleSharePublic = (territory: Territory) => {
+    const url = `${window.location.origin}/territories/${territory.id}/public`;
+    if (navigator.share) {
+      navigator.share({
+        title: `Território ${territory.number} - ${territory.name}`,
+        text: `📍 Território ${territory.number}: ${territory.name}\n📌 Endereço: ${territory.address}\n🔗 ${url}`,
+        url: url
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        alert('🔗 Link público copiado! Compartilhe com qualquer publicador.');
+      }).catch(() => {
+        // Fallback: mostrar o link em um prompt
+        prompt('Copie o link abaixo para compartilhar:', url);
+      });
+    }
   };
 
   return (
@@ -198,32 +219,40 @@ const TerritoriesPage: React.FC = () => {
                     </td>
                     <td>{territory.visits}</td>
                     <td>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {/* Trabalhar - versão autenticada */}
                         <button 
                           className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
-                          title="Trabalhar no território"
+                          title="Trabalhar no território (login necessário)"
                           onClick={() => navigate(`/territories/${territory.id}/worker`)}
                         >
                           <PlayCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                         </button>
+                        
+                        {/* Compartilhar - link público */}
                         <button 
                           className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
-                          title="Visualizar"
+                          title="Compartilhar publicamente (sem login)"
+                          onClick={() => handleSharePublic(territory)}
+                        >
+                          <Share2 className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                        </button>
+                        
+                        {/* Visualizar */}
+                        <button 
+                          className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
+                          title="Visualizar detalhes"
                           onClick={() => setSelectedTerritory(territory)}
                         >
                           <Eye className="w-4 h-4 text-[var(--text-muted)]" />
                         </button>
+                        
+                        {/* Editar */}
                         <button 
                           className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
-                          title="Editar"
+                          title="Editar território"
                         >
                           <Edit className="w-4 h-4 text-[var(--text-muted)]" />
-                        </button>
-                        <button 
-                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                          title="Excluir"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
                       </div>
                     </td>
@@ -263,7 +292,7 @@ const TerritoriesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Ações */}
+      {/* Ações em massa */}
       <div className="mt-6 flex flex-wrap gap-3">
         <button className="px-6 py-2.5 bg-[#1a3c6e] text-white rounded-xl font-medium hover:bg-[#153058] transition-all duration-200 flex items-center gap-2">
           <Plus className="w-4 h-4" />
@@ -277,6 +306,28 @@ const TerritoriesPage: React.FC = () => {
           <Upload className="w-4 h-4" />
           Exportar
         </button>
+      </div>
+
+      {/* Legenda dos botões */}
+      <div className="mt-4 p-3 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+        <p className="text-xs text-[var(--text-muted)] flex flex-wrap gap-4">
+          <span className="flex items-center gap-1">
+            <PlayCircle className="w-4 h-4 text-green-600" />
+            Trabalhar (login)
+          </span>
+          <span className="flex items-center gap-1">
+            <Share2 className="w-4 h-4 text-blue-500" />
+            Compartilhar (público)
+          </span>
+          <span className="flex items-center gap-1">
+            <Eye className="w-4 h-4 text-[var(--text-muted)]" />
+            Visualizar
+          </span>
+          <span className="flex items-center gap-1">
+            <Edit className="w-4 h-4 text-[var(--text-muted)]" />
+            Editar
+          </span>
+        </p>
       </div>
     </div>
   );
