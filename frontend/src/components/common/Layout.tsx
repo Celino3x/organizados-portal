@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Icon, IconColors, IconSizes } from '../../utils/icons';
 import {
   LayoutDashboard,
   MapPin,
@@ -31,36 +30,11 @@ const Layout: React.FC = () => {
   };
 
   const menuItems = [
-    { 
-      path: '/dashboard', 
-      label: 'Dashboard', 
-      icon: LayoutDashboard,
-      color: 'primary'
-    },
-    { 
-      path: '/territories', 
-      label: 'Territórios', 
-      icon: MapPin,
-      color: 'primary'
-    },
-    { 
-      path: '/designations', 
-      label: 'Designações', 
-      icon: ClipboardList,
-      color: 'primary'
-    },
-    { 
-      path: '/congregation', 
-      label: 'Congregação', 
-      icon: Users,
-      color: 'primary'
-    },
-    { 
-      path: '/reports', 
-      label: 'Relatórios', 
-      icon: BarChart3,
-      color: 'primary'
-    }
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/territories', label: 'Territórios', icon: MapPin },
+    { path: '/designations', label: 'Designações', icon: ClipboardList },
+    { path: '/congregation', label: 'Congregação', icon: Users },
+    { path: '/reports', label: 'Relatórios', icon: BarChart3 }
   ];
 
   return (
@@ -103,11 +77,7 @@ const Layout: React.FC = () => {
                     : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                <Icon 
-                  icon={IconComponent} 
-                  size="md"
-                  color={isActive ? 'primary' : 'gray'}
-                />
+                <IconComponent className="w-5 h-5" />
                 {isSidebarOpen && (
                   <span className="text-sm font-medium">{item.label}</span>
                 )}
