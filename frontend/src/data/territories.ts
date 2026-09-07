@@ -11,7 +11,7 @@ export interface Territory {
   visits: number;
   assignedTo?: string;
   assignedToName?: string;
-  polygon?: string; // WKT do polígono
+  polygon?: string;
 }
 
 export const territories: Territory[] = [
@@ -35,7 +35,50 @@ export const territories: Territory[] = [
   { id: '18', number: 18, name: 'Território 18', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.610642, longitude: -22.9134827, status: 'available', visits: 0 },
   { id: '19', number: 19, name: 'Território 19', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6102387, longitude: -22.9126898, status: 'available', visits: 0 },
   { id: '20', number: 20, name: 'Território 20', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6094824, longitude: -22.912759, status: 'available', visits: 0 },
-  // ... continuar com todos os 64
+  { id: '21', number: 21, name: 'Território 21', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6088744, longitude: -22.9117949, status: 'available', visits: 0 },
+  { id: '22', number: 22, name: 'Território 22', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6086785, longitude: -22.9142314, status: 'available', visits: 0 },
+  { id: '23', number: 23, name: 'Território 23', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6078363, longitude: -22.9142205, status: 'available', visits: 0 },
+  { id: '24', number: 24, name: 'Território 24', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6086831, longitude: -22.9138608, status: 'available', visits: 0 },
+  { id: '25', number: 25, name: 'Território 25', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6071496, longitude: -22.9127271, status: 'available', visits: 0 },
+  { id: '26', number: 26, name: 'Território 26', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6078443, longitude: -22.9135432, status: 'available', visits: 0 },
+  { id: '27', number: 27, name: 'Território 27', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6087421, longitude: -22.9131938, status: 'available', visits: 0 },
+  { id: '28', number: 28, name: 'Território 28', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6082869, longitude: -22.9127541, status: 'available', visits: 0 },
+  { id: '29', number: 29, name: 'Território 29', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6080562, longitude: -22.9124088, status: 'available', visits: 0 },
+  { id: '30', number: 30, name: 'Território 30', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6071577, longitude: -22.9119107, status: 'available', visits: 0 },
+  { id: '31', number: 31, name: 'Território 31', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6079911, longitude: -22.9117912, status: 'available', visits: 0 },
+  { id: '32', number: 32, name: 'Território 32', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6065073, longitude: -22.9123328, status: 'available', visits: 0 },
+  { id: '33', number: 33, name: 'Território 33', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6056329, longitude: -22.9111562, status: 'available', visits: 0 },
+  { id: '34', number: 34, name: 'Território 34', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6055276, longitude: -22.9126811, status: 'available', visits: 0 },
+  { id: '35', number: 35, name: 'Território 35', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6065391, longitude: -22.912557, status: 'available', visits: 0 },
+  { id: '36', number: 36, name: 'Território 36', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6066411, longitude: -22.9130759, status: 'available', visits: 0 },
+  { id: '37', number: 37, name: 'Território 37', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6068323, longitude: -22.9138862, status: 'available', visits: 0 },
+  { id: '38', number: 38, name: 'Território 38', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6058718, longitude: -22.9149548, status: 'available', visits: 0 },
+  { id: '39', number: 39, name: 'Território 39', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6045425, longitude: -22.9144854, status: 'available', visits: 0 },
+  { id: '40', number: 40, name: 'Território 40', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6033854, longitude: -22.9141914, status: 'available', visits: 0 },
+  { id: '41', number: 41, name: 'Território 41', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6023612, longitude: -22.9137568, status: 'available', visits: 0 },
+  { id: '42', number: 42, name: 'Território 42', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6032303, longitude: -22.9135739, status: 'available', visits: 0 },
+  { id: '43', number: 43, name: 'Território 43', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6037931, longitude: -22.9128474, status: 'available', visits: 0 },
+  { id: '44', number: 44, name: 'Território 44', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6047774, longitude: -22.9126769, status: 'available', visits: 0 },
+  { id: '45', number: 45, name: 'Território 45', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6037475, longitude: -22.9124793, status: 'available', visits: 0 },
+  { id: '46', number: 46, name: 'Território 46', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6029868, longitude: -22.9111232, status: 'available', visits: 0 },
+  { id: '47', number: 47, name: 'Território 47', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6022238, longitude: -22.9122758, status: 'available', visits: 0 },
+  { id: '48', number: 48, name: 'Território 48', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6022432, longitude: -22.9137717, status: 'available', visits: 0 },
+  { id: '49', number: 49, name: 'Território 49', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6015619, longitude: -22.9136136, status: 'available', visits: 0 },
+  { id: '50', number: 50, name: 'Território 50', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6014045, longitude: -22.9139776, status: 'available', visits: 0 },
+  { id: '51', number: 51, name: 'Território 51', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6014218, longitude: -22.9136322, status: 'available', visits: 0 },
+  { id: '52', number: 52, name: 'Território 52', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6008773, longitude: -22.9136272, status: 'available', visits: 0 },
+  { id: '53', number: 53, name: 'Território 53', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6007975, longitude: -22.9140064, status: 'available', visits: 0 },
+  { id: '54', number: 54, name: 'Território 54', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.601867, longitude: -22.9104624, status: 'available', visits: 0 },
+  { id: '55', number: 55, name: 'Território 55', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6014305, longitude: -22.9119756, status: 'available', visits: 0 },
+  { id: '56', number: 56, name: 'Território 56', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6010979, longitude: -22.9120101, status: 'available', visits: 0 },
+  { id: '57', number: 57, name: 'Território 57', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6009752, longitude: -22.9125917, status: 'available', visits: 0 },
+  { id: '58', number: 58, name: 'Território 58', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6000787, longitude: -22.9123511, status: 'available', visits: 0 },
+  { id: '59', number: 59, name: 'Território 59', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.6000209, longitude: -22.9139859, status: 'available', visits: 0 },
+  { id: '60', number: 60, name: 'Território 60', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.5991921, longitude: -22.913892, status: 'available', visits: 0 },
+  { id: '61', number: 61, name: 'Território 61', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.5997668, longitude: -22.9122825, status: 'available', visits: 0 },
+  { id: '62', number: 62, name: 'Território 62', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.5995959, longitude: -22.911941, status: 'available', visits: 0 },
+  { id: '63', number: 63, name: 'Território 63', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.5991606, longitude: -22.9118497, status: 'available', visits: 0 },
+  { id: '64', number: 64, name: 'Território 64', group: 'Vilar Guanabara', type: 'residential', address: 'Vilar Guanabara', latitude: -43.5976455, longitude: -22.9136612, status: 'available', visits: 0 }
 ];
 
 export const groups = ['Vilar Guanabara'];
