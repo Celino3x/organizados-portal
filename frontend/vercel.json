@@ -1,11 +1,8 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://organizados-api.onrender.com/api/$1"
+      "destination": "https://organizados-portal.onrender.com/api/$1"
     }
   ]
 }
