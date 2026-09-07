@@ -62,11 +62,24 @@ app.post('/api/auth/register', async (req, res) => {
   console.log('Body recebido:', req.body);
   
   try {
-    const { name, email, password, congregation } = req.body;
+    const { 
+      name, 
+      email, 
+      password, 
+      congregation,
+      phone,
+      cellphone,
+      address,
+      birthDate,
+      baptismDate,
+      class: userClass,
+      gender,
+      privileges
+    } = req.body;
 
     if (!name || !email || !password || !congregation) {
       return res.status(400).json({ 
-        error: 'Todos os campos são obrigatórios'
+        error: 'Nome, email, senha e congregação são obrigatórios'
       });
     }
 
@@ -86,8 +99,15 @@ app.post('/api/auth/register', async (req, res) => {
         email,
         password: hashedPassword,
         congregation,
+        phone: phone || null,
+        cellphone: cellphone || null,
+        address: address || null,
+        birthDate: birthDate || null,
+        baptismDate: baptismDate || null,
+        class: userClass || 'Outras Ovelhas',
+        gender: gender || 'male',
         accessLevel: 'admin',
-        privileges: ['publisher', 'elder']
+        privileges: privileges || ['publisher']
       }
     });
 
@@ -185,6 +205,14 @@ app.get('/api/auth/verify', async (req, res) => {
         id: true,
         name: true,
         email: true,
+        congregation: true,
+        phone: true,
+        cellphone: true,
+        address: true,
+        birthDate: true,
+        baptismDate: true,
+        class: true,
+        gender: true,
         accessLevel: true,
         privileges: true,
         isActive: true
@@ -253,6 +281,11 @@ app.get('/api/users', authenticate, authorizeAdmin, async (req, res) => {
         email: true,
         congregation: true,
         phone: true,
+        cellphone: true,
+        address: true,
+        birthDate: true,
+        baptismDate: true,
+        class: true,
         gender: true,
         accessLevel: true,
         privileges: true,
@@ -281,6 +314,11 @@ app.get('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
         email: true,
         congregation: true,
         phone: true,
+        cellphone: true,
+        address: true,
+        birthDate: true,
+        baptismDate: true,
+        class: true,
         gender: true,
         accessLevel: true,
         privileges: true,
@@ -308,10 +346,15 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
       name, 
       email, 
       password, 
-      congregation, 
-      phone, 
-      gender, 
-      accessLevel, 
+      congregation,
+      phone,
+      cellphone,
+      address,
+      birthDate,
+      baptismDate,
+      class: userClass,
+      gender,
+      accessLevel,
       privileges,
       isActive 
     } = req.body;
@@ -325,7 +368,7 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
     // Validar privilégios para mulheres
     if (gender === 'female') {
       const invalidPrivileges = ['ministerial', 'elder'];
-      const hasInvalid = privileges.some(p => invalidPrivileges.includes(p));
+      const hasInvalid = (privileges || []).some(p => invalidPrivileges.includes(p));
       if (hasInvalid) {
         return res.status(400).json({ 
           error: 'Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos' 
@@ -343,6 +386,11 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
         password: hashedPassword,
         congregation,
         phone: phone || null,
+        cellphone: cellphone || null,
+        address: address || null,
+        birthDate: birthDate || null,
+        baptismDate: baptismDate || null,
+        class: userClass || 'Outras Ovelhas',
         gender: gender || 'male',
         accessLevel: accessLevel || 'viewer',
         privileges: privileges || ['publisher'],
@@ -368,10 +416,15 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       name, 
       email, 
       password, 
-      congregation, 
-      phone, 
-      gender, 
-      accessLevel, 
+      congregation,
+      phone,
+      cellphone,
+      address,
+      birthDate,
+      baptismDate,
+      class: userClass,
+      gender,
+      accessLevel,
       privileges,
       isActive 
     } = req.body;
@@ -408,6 +461,11 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       email: email || existingUser.email,
       congregation: congregation || existingUser.congregation,
       phone: phone !== undefined ? phone : existingUser.phone,
+      cellphone: cellphone !== undefined ? cellphone : existingUser.cellphone,
+      address: address !== undefined ? address : existingUser.address,
+      birthDate: birthDate !== undefined ? birthDate : existingUser.birthDate,
+      baptismDate: baptismDate !== undefined ? baptismDate : existingUser.baptismDate,
+      class: userClass !== undefined ? userClass : existingUser.class,
       gender: gender || existingUser.gender,
       accessLevel: accessLevel || existingUser.accessLevel,
       privileges: privileges || existingUser.privileges,

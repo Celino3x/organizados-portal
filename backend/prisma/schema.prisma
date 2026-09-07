@@ -14,6 +14,11 @@ model User {
   password    String
   congregation String
   phone       String?
+  cellphone   String?   // NOVO: Celular
+  address     String?   // NOVO: Endereço
+  birthDate   String?   // NOVO: Data de Nascimento
+  baptismDate String?   // NOVO: Data de Batismo
+  class       String?   // NOVO: "Outras Ovelhas" ou "Ungido"
   gender      String   @default("male")
   accessLevel String   @default("viewer")
   privileges  String[] @default(["publisher"])

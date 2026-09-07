@@ -22,7 +22,11 @@ import {
   X,
   Check,
   Save,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  Home,
+  Smartphone,
+  User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -34,6 +38,11 @@ interface UserData {
   email: string;
   congregation: string;
   phone?: string;
+  cellphone?: string;
+  address?: string;
+  birthDate?: string;
+  baptismDate?: string;
+  class?: string;
   gender: 'male' | 'female';
   accessLevel: 'viewer' | 'support' | 'admin';
   privileges: string[];
@@ -47,8 +56,14 @@ interface UserFormData {
   name: string;
   email: string;
   password?: string;
+  confirmPassword?: string;
   congregation: string;
   phone?: string;
+  cellphone?: string;
+  address?: string;
+  birthDate?: string;
+  baptismDate?: string;
+  class?: string;
   gender: 'male' | 'female';
   accessLevel: 'viewer' | 'support' | 'admin';
   privileges: string[];
@@ -70,8 +85,14 @@ const Congregation: React.FC = () => {
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     congregation: '',
     phone: '',
+    cellphone: '',
+    address: '',
+    birthDate: '',
+    baptismDate: '',
+    class: 'Outras Ovelhas',
     gender: 'male',
     accessLevel: 'viewer',
     privileges: ['publisher'],
@@ -93,6 +114,12 @@ const Congregation: React.FC = () => {
     { value: 'viewer', label: '👁️ Visualizador' },
     { value: 'support', label: '🛠️ Apoio' },
     { value: 'admin', label: '👑 Administrador' }
+  ];
+
+  // Classes disponíveis
+  const classes = [
+    'Outras Ovelhas',
+    'Ungido'
   ];
 
   // Buscar usuários
@@ -141,8 +168,14 @@ const Congregation: React.FC = () => {
         name: user.name,
         email: user.email,
         password: '',
+        confirmPassword: '',
         congregation: user.congregation,
         phone: user.phone || '',
+        cellphone: user.cellphone || '',
+        address: user.address || '',
+        birthDate: user.birthDate || '',
+        baptismDate: user.baptismDate || '',
+        class: user.class || 'Outras Ovelhas',
         gender: user.gender,
         accessLevel: user.accessLevel,
         privileges: user.privileges,
@@ -154,8 +187,14 @@ const Congregation: React.FC = () => {
         name: '',
         email: '',
         password: '',
+        confirmPassword: '',
         congregation: '',
         phone: '',
+        cellphone: '',
+        address: '',
+        birthDate: '',
+        baptismDate: '',
+        class: 'Outras Ovelhas',
         gender: 'male',
         accessLevel: 'viewer',
         privileges: ['publisher'],
@@ -210,6 +249,13 @@ const Congregation: React.FC = () => {
         return;
       }
 
+      // Validar confirmação de senha
+      if (formData.password && formData.password !== formData.confirmPassword) {
+        setFormError('As senhas não coincidem');
+        setFormLoading(false);
+        return;
+      }
+
       // Validar privilégios para mulheres
       if (formData.gender === 'female') {
         const invalidPrivileges = ['ministerial', 'elder'];
@@ -225,7 +271,12 @@ const Congregation: React.FC = () => {
         name: formData.name,
         email: formData.email,
         congregation: formData.congregation,
-        phone: formData.phone,
+        phone: formData.phone || null,
+        cellphone: formData.cellphone || null,
+        address: formData.address || null,
+        birthDate: formData.birthDate || null,
+        baptismDate: formData.baptismDate || null,
+        class: formData.class || 'Outras Ovelhas',
         gender: formData.gender,
         accessLevel: formData.accessLevel,
         privileges: formData.privileges,
@@ -421,6 +472,7 @@ const Congregation: React.FC = () => {
               <tr>
                 <th>Publicador</th>
                 <th>Contato</th>
+                <th>Classe</th>
                 <th>Privilégios</th>
                 <th>Nível</th>
                 <th>Status</th>
@@ -457,7 +509,18 @@ const Congregation: React.FC = () => {
                             {user.phone}
                           </div>
                         )}
+                        {user.cellphone && (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Smartphone className="w-3 h-3 text-[var(--text-muted)]" />
+                            {user.cellphone}
+                          </div>
+                        )}
                       </div>
+                    </td>
+                    <td>
+                      <span className="tech-tag">
+                        {user.class || 'Outras Ovelhas'}
+                      </span>
                     </td>
                     <td>
                       <div className="flex flex-wrap gap-1">
@@ -520,7 +583,7 @@ const Congregation: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-[var(--text-muted)]">
+                  <td colSpan={7} className="text-center py-8 text-[var(--text-muted)]">
                     <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     Nenhum publicador encontrado
                   </td>
@@ -570,113 +633,158 @@ const Congregation: React.FC = () => {
             )}
 
             <form onSubmit={handleSave} className="space-y-4">
-              {/* Nome */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                  Nome completo *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleFormChange('name', e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                  required
-                />
+              {/* Seção: Dados Pessoais */}
+              <div className="border-b border-[var(--border-color)] pb-4">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <UserIcon className="w-5 h-5" />
+                  Dados Pessoais
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Nome completo *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => handleFormChange('name', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleFormChange('email', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Telefone
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.phone || ''}
+                      onChange={(e) => handleFormChange('phone', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                      placeholder="(00) 0000-0000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Celular
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cellphone || ''}
+                      onChange={(e) => handleFormChange('cellphone', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Endereço
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.address || ''}
+                      onChange={(e) => handleFormChange('address', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                      placeholder="Rua, número, bairro"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleFormChange('email', e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                  required
-                />
+              {/* Seção: Congregação */}
+              <div className="border-b border-[var(--border-color)] pb-4">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <Home className="w-5 h-5" />
+                  Informações da Congregação
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Congregação *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.congregation}
+                      onChange={(e) => handleFormChange('congregation', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Classe
+                    </label>
+                    <select
+                      value={formData.class || 'Outras Ovelhas'}
+                      onChange={(e) => handleFormChange('class', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                    >
+                      {classes.map(cls => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Sexo
+                    </label>
+                    <select
+                      value={formData.gender}
+                      onChange={(e) => handleFormChange('gender', e.target.value as any)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                    >
+                      <option value="male">👨 Masculino</option>
+                      <option value="female">👩 Feminino</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Data de Nascimento
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.birthDate || ''}
+                      onChange={(e) => handleFormChange('birthDate', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Data de Batismo
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.baptismDate || ''}
+                      onChange={(e) => handleFormChange('baptismDate', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Senha */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                  {editingUser ? 'Nova senha (deixe em branco para manter)' : 'Senha *'}
-                </label>
-                <input
-                  type="password"
-                  value={formData.password || ''}
-                  onChange={(e) => handleFormChange('password', e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                  required={!editingUser}
-                  minLength={6}
-                />
-              </div>
-
-              {/* Congregação */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                  Congregação *
-                </label>
-                <input
-                  type="text"
-                  value={formData.congregation}
-                  onChange={(e) => handleFormChange('congregation', e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                  required
-                />
-              </div>
-
-              {/* Telefone */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                  Telefone
-                </label>
-                <input
-                  type="text"
-                  value={formData.phone || ''}
-                  onChange={(e) => handleFormChange('phone', e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                  placeholder="(00) 00000-0000"
-                />
-              </div>
-
-              {/* Gênero */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                  Gênero
-                </label>
-                <select
-                  value={formData.gender}
-                  onChange={(e) => handleFormChange('gender', e.target.value as any)}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                >
-                  <option value="male">👨 Masculino</option>
-                  <option value="female">👩 Feminino</option>
-                </select>
-              </div>
-
-              {/* Nível de Acesso */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                  Nível de Acesso
-                </label>
-                <select
-                  value={formData.accessLevel}
-                  onChange={(e) => handleFormChange('accessLevel', e.target.value as any)}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                >
-                  {accessLevels.map(level => (
-                    <option key={level.value} value={level.value}>{level.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Privilégios */}
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+              {/* Seção: Privilégios */}
+              <div className="border-b border-[var(--border-color)] pb-4">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <Award className="w-5 h-5" />
                   Privilégios
-                </label>
+                </h3>
+                <p className="text-xs text-[var(--text-muted)] mb-2">
+                  ⚠️ Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {availablePrivileges.map((priv) => {
                     const isSelected = formData.privileges.includes(priv.value);
@@ -696,16 +804,72 @@ const Congregation: React.FC = () => {
                         } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {priv.label}
-                        {isDisabled && ' ⚠️'}
+                        {isDisabled && ' 🔒'}
                       </button>
                     );
                   })}
                 </div>
-                {formData.gender === 'female' && (
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                    ⚠️ Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos
-                  </p>
-                )}
+              </div>
+
+              {/* Seção: Nível de Acesso */}
+              <div className="border-b border-[var(--border-color)] pb-4">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <Shield className="w-5 h-5" />
+                  Permissão
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    Nível de Acesso
+                  </label>
+                  <select
+                    value={formData.accessLevel}
+                    onChange={(e) => handleFormChange('accessLevel', e.target.value as any)}
+                    className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                  >
+                    {accessLevels.map(level => (
+                      <option key={level.value} value={level.value}>{level.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Seção: Segurança */}
+              <div className="border-b border-[var(--border-color)] pb-4">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <Shield className="w-5 h-5" />
+                  Segurança
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      {editingUser ? 'Nova Senha (deixe em branco para manter)' : 'Senha *'}
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password || ''}
+                      onChange={(e) => handleFormChange('password', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                      required={!editingUser}
+                      minLength={6}
+                      placeholder={editingUser ? 'Digite a nova senha' : 'Digite a senha'}
+                    />
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      {editingUser ? 'Deixe em branco para manter a atual' : 'Mínimo 6 caracteres'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                      Confirmar Nova Senha
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.confirmPassword || ''}
+                      onChange={(e) => handleFormChange('confirmPassword', e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                      placeholder="Digite a senha novamente"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Status */}
