@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, Polygon } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { 
   MapPin, 
   Clock, 
@@ -30,7 +33,9 @@ import {
   RefreshCw,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { territories, getStatusLabel, getStatusBadge, getTypeLabel } from '../data/territories';
 
@@ -46,22 +51,81 @@ interface TerritoryWork {
   visits: number;
 }
 
+// Ícone customizado para o ponto de partida
+const createStartIcon = () => {
+  return L.divIcon({
+    className: 'custom-marker-start',
+    html: `<div style="
+      background-color: #22c55e;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+      color: white;
+    ">🏠</div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+  });
+};
+
+// Ícone para o território
+const createTerritoryIcon = () => {
+  return L.divIcon({
+    className: 'custom-marker-territory',
+    html: `<div style="
+      background-color: #3b82f6;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    "></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+};
+
 const TerritoryWorker: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [territory, setTerritory] = useState(territories.find(t => t.id === id));
   const [work, setWork] = useState<TerritoryWork | null>(null);
   const [showInfo, setShowInfo] = useState(true);
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
   const [visits, setVisits] = useState(0);
+  const [mapExpanded, setMapExpanded] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     if (!territory) {
       navigate('/territories');
     }
   }, [territory, navigate]);
+
+  // Gerar polígono mockado para o território (simulação)
+  const getTerritoryPolygon = () => {
+    if (!territory) return null;
+    // Criar um polígono aproximado ao redor do ponto
+    const lat = territory.latitude;
+    const lng = territory.longitude;
+    const offset = 0.0015;
+    return [
+      [lng + offset, lat - offset],
+      [lng + offset, lat + offset],
+      [lng - offset, lat + offset],
+      [lng - offset, lat - offset],
+      [lng + offset, lat - offset]
+    ];
+  };
 
   const handleStart = () => {
     if (!territory) return;
@@ -136,9 +200,14 @@ const TerritoryWorker: React.FC = () => {
     );
   }
 
+  const polygon = getTerritoryPolygon();
+  const startIcon = createStartIcon();
+  const territoryIcon = createTerritoryIcon();
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-6xl mx-auto">
+      {/* Header com navegação */}
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <button
           onClick={() => navigate('/territories')}
           className="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition"
@@ -146,7 +215,7 @@ const TerritoryWorker: React.FC = () => {
           <ArrowLeft className="w-5 h-5" />
           Voltar
         </button>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={handleShare}
             className="p-2 rounded-xl border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition flex items-center gap-2"
@@ -164,6 +233,7 @@ const TerritoryWorker: React.FC = () => {
         </div>
       </div>
 
+      {/* Título e Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">
@@ -183,6 +253,117 @@ const TerritoryWorker: React.FC = () => {
         </div>
       </div>
 
+      {/* MAPA - Destaque principal */}
+      <div className={`mb-6 ${mapExpanded ? 'fixed inset-4 z-50' : ''}`}>
+        <div className="card p-0 overflow-hidden relative">
+          <div className="absolute top-2 right-2 z-10 flex gap-2">
+            <button
+              onClick={() => setMapExpanded(!mapExpanded)}
+              className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title={mapExpanded ? 'Minimizar mapa' : 'Expandir mapa'}
+            >
+              {mapExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={() => window.open(`https://www.google.com/maps?q=${territory.latitude},${territory.longitude}`, '_blank')}
+              className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title="Abrir no Google Maps"
+            >
+              <Globe className="w-4 h-4" />
+            </button>
+          </div>
+          
+          {isClient ? (
+            <MapContainer
+              center={[territory.longitude, territory.latitude]}
+              zoom={16}
+              style={{ height: mapExpanded ? 'calc(100vh - 100px)' : '400px', width: '100%' }}
+              className="rounded-lg"
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              />
+              
+              {/* Polígono do Território */}
+              {polygon && (
+                <Polygon
+                  positions={polygon}
+                  pathOptions={{
+                    color: '#1a3c6e',
+                    weight: 3,
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.2
+                  }}
+                >
+                  <Popup>
+                    <div className="text-sm font-medium">
+                      Território #{territory.number}
+                      <br />
+                      <span className="text-xs text-gray-500">{territory.name}</span>
+                    </div>
+                  </Popup>
+                </Polygon>
+              )}
+
+              {/* Ponto de Partida - Destaque */}
+              <Marker
+                position={[territory.longitude, territory.latitude]}
+                icon={startIcon}
+              >
+                <Popup>
+                  <div className="text-sm">
+                    <strong>🏠 Ponto de Partida</strong>
+                    <br />
+                    <span className="text-xs text-gray-500">Território #{territory.number}</span>
+                    <br />
+                    <button 
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1"
+                      onClick={() => {
+                        window.open(`https://www.google.com/maps?q=${territory.latitude},${territory.longitude}`, '_blank');
+                      }}
+                    >
+                      Abrir no Google Maps
+                    </button>
+                  </div>
+                </Popup>
+              </Marker>
+
+              {/* Marcador do território */}
+              <Marker
+                position={[territory.longitude + 0.0005, territory.latitude + 0.0005]}
+                icon={territoryIcon}
+              />
+            </MapContainer>
+          ) : (
+            <div className="h-[400px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+              <div className="text-[var(--text-muted)]">Carregando mapa...</div>
+            </div>
+          )}
+          
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-4 text-sm">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-green-500 inline-block border-2 border-white shadow"></span>
+                <span className="text-[var(--text-muted)]">Ponto de Partida</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-blue-500 inline-block border-2 border-white shadow"></span>
+                <span className="text-[var(--text-muted)]">Área do Território</span>
+              </span>
+            </div>
+            <button
+              onClick={() => window.open(`https://www.google.com/maps/dir//${territory.latitude},${territory.longitude}`, '_blank')}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              <Navigation className="w-3 h-3" />
+              Como chegar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid de Informações */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="card">
           <div className="card-title">
@@ -193,8 +374,9 @@ const TerritoryWorker: React.FC = () => {
             <p><span className="font-medium">Endereço:</span> {territory.address}</p>
             <p><span className="font-medium">Tipo:</span> {getTypeLabel(territory.type)}</p>
             <p><span className="font-medium">Grupo:</span> {territory.group}</p>
-            <p className="text-xs text-[var(--text-muted)]">
-              📍 {territory.latitude}, {territory.longitude}
+            <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+              <Navigation className="w-3 h-3" />
+              Ponto de Partida: {territory.latitude}, {territory.longitude}
             </p>
           </div>
         </div>
@@ -221,6 +403,7 @@ const TerritoryWorker: React.FC = () => {
         </div>
       </div>
 
+      {/* Controles do Worker */}
       <div className="card mb-6 border-2 border-blue-200 dark:border-blue-800">
         <div className="card-title text-lg">
           <PlayCircle className="w-6 h-6 text-blue-600" />
@@ -303,14 +486,15 @@ const TerritoryWorker: React.FC = () => {
         </div>
       </div>
 
+      {/* Informações Detalhadas */}
       {showInfo && (
         <div className="card mb-6">
           <div className="card-title">
             <Info className="w-5 h-5 text-[#1a3c6e]" />
             Informações Detalhadas
           </div>
-          <div className="card-desc mt-2 space-y-2">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="card-desc mt-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <div className="p-3 bg-[var(--bg-card)] rounded-lg">
                 <span className="text-xs text-[var(--text-muted)] block">Número</span>
                 <span className="font-bold text-lg">#{territory.number}</span>
@@ -328,39 +512,20 @@ const TerritoryWorker: React.FC = () => {
                 <span>{territory.visits}</span>
               </div>
             </div>
-            
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <p className="text-sm flex items-start gap-2">
-                <Navigation className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                <span>
-                  <span className="font-medium">Ponto de Partida:</span> 
-                  <br />
-                  <span className="text-xs">{territory.latitude}, {territory.longitude}</span>
-                  <br />
-                  <button 
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1"
-                    onClick={() => {
-                      window.open(`https://www.google.com/maps?q=${territory.latitude},${territory.longitude}`, '_blank');
-                    }}
-                  >
-                    Abrir no Google Maps
-                  </button>
-                </span>
-              </p>
-            </div>
           </div>
         </div>
       )}
 
+      {/* Dicas */}
       <div className="alert alert-info flex items-start gap-3">
         <Info className="w-5 h-5 mt-0.5 flex-shrink-0" />
         <div>
           <strong>Dicas para o trabalho:</strong>
           <ul className="list-disc list-inside text-sm mt-1 space-y-1">
+            <li>Use o mapa para se localizar e encontrar o ponto de partida</li>
             <li>Registre o número de visitas realizadas</li>
             <li>Faça anotações sobre o território</li>
             <li>Ao finalizar, o território será marcado como concluído</li>
-            <li>Compartilhe o território com outros publicadores se necessário</li>
           </ul>
         </div>
       </div>
