@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Filter, 
@@ -12,7 +13,8 @@ import {
   ChevronUp,
   Plus,
   Download,
-  Upload
+  Upload,
+  PlayCircle
 } from 'lucide-react';
 import { territories, groups, getStatusLabel, getStatusBadge, getTypeLabel, Territory } from '../data/territories';
 import TerritoryMap from '../components/maps/TerritoryMap';
@@ -20,6 +22,7 @@ import TerritoryMap from '../components/maps/TerritoryMap';
 type ViewMode = 'list' | 'map';
 
 const TerritoriesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -196,6 +199,13 @@ const TerritoriesPage: React.FC = () => {
                     <td>{territory.visits}</td>
                     <td>
                       <div className="flex items-center gap-2">
+                        <button 
+                          className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
+                          title="Trabalhar no território"
+                          onClick={() => navigate(`/territories/${territory.id}/worker`)}
+                        >
+                          <PlayCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        </button>
                         <button 
                           className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
                           title="Visualizar"
