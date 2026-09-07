@@ -11,38 +11,24 @@ import {
   CheckCircle, 
   XCircle,
   Share2,
-  Send,
-  Download,
   Printer,
-  Home,
-  Building,
-  Store,
   Navigation,
-  Phone,
-  Mail,
-  Map,
   Globe,
   Eye,
-  Edit,
-  Trash2,
-  AlertCircle,
   Info,
   ArrowLeft,
   PlayCircle,
-  StopCircle,
-  RefreshCw,
   Check,
-  ChevronDown,
-  ChevronUp,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Copy,
+  Link as LinkIcon
 } from 'lucide-react';
 import { territories, getStatusLabel, getStatusBadge, getTypeLabel } from '../data/territories';
 
 interface TerritoryWork {
   id: string;
   territoryId: string;
-  workerId: string;
   workerName: string;
   startDate: string;
   endDate?: string;
@@ -51,7 +37,21 @@ interface TerritoryWork {
   visits: number;
 }
 
-// Ícone customizado para o ponto de partida
+// Função para gerar polígono mockado (simulação)
+const getMockPolygon = (latitude: number, longitude: number) => {
+  const lat = latitude;
+  const lng = longitude;
+  const offset = 0.0015;
+  return [
+    [lng + offset, lat - offset],
+    [lng + offset, lat + offset],
+    [lng - offset, lat + offset],
+    [lng - offset, lat - offset],
+    [lng + offset, lat - offset]
+  ];
+};
+
+// Ícone customizado
 const createStartIcon = () => {
   return L.divIcon({
     className: 'custom-marker-start',
@@ -74,56 +74,42 @@ const createStartIcon = () => {
   });
 };
 
-// Ícone para o território
-const createTerritoryIcon = () => {
-  return L.divIcon({
-    className: 'custom-marker-territory',
-    html: `<div style="
-      background-color: #3b82f6;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    "></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8]
-  });
-};
-
-// Função para gerar polígono mockado (simulação)
-const getMockPolygon = (latitude: number, longitude: number) => {
-  const lat = latitude;
-  const lng = longitude;
-  const offset = 0.0015;
-  return [
-    [lng + offset, lat - offset],
-    [lng + offset, lat + offset],
-    [lng - offset, lat + offset],
-    [lng - offset, lat - offset],
-    [lng + offset, lat - offset]
-  ];
-};
-
-const TerritoryWorkerTest: React.FC = () => {
+const TerritoryWorkerPublic: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [territory, setTerritory] = useState(territories.find(t => t.id === id));
   const [work, setWork] = useState<TerritoryWork | null>(null);
   const [showInfo, setShowInfo] = useState(true);
-  const [showMap, setShowMap] = useState(true);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
   const [visits, setVisits] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  
+  // Estado para identificação do usuário
+  const [workerName, setWorkerName] = useState('');
+  const [isIdentified, setIsIdentified] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
     if (!territory) {
       navigate('/territories');
+    } else {
+      setShareLink(window.location.href);
     }
   }, [territory, navigate]);
+
+  const polygonPoints = territory ? getMockPolygon(territory.longitude, territory.latitude) : null;
+
+  const handleIdentify = () => {
+    if (workerName.trim().length < 3) {
+      alert('Por favor, digite seu nome completo (mínimo 3 caracteres)');
+      return;
+    }
+    setIsIdentified(true);
+  };
 
   const handleStart = () => {
     if (!territory) return;
@@ -132,8 +118,7 @@ const TerritoryWorkerTest: React.FC = () => {
     const newWork: TerritoryWork = {
       id: Date.now().toString(),
       territoryId: territory.id,
-      workerId: 'current-user',
-      workerName: 'João Silva',
+      workerName: workerName,
       startDate: new Date().toISOString(),
       status: 'in_progress',
       visits: 0
@@ -142,7 +127,7 @@ const TerritoryWorkerTest: React.FC = () => {
     setWork(newWork);
     setTerritory({ ...territory, status: 'in_progress' });
     setLoading(false);
-    alert('✅ Trabalho iniciado! Registre suas visitas e anotações.');
+    alert(`✅ Trabalho iniciado por ${workerName}! Registre suas visitas e anotações.`);
   };
 
   const handleComplete = () => {
@@ -160,30 +145,21 @@ const TerritoryWorkerTest: React.FC = () => {
     setWork(completedWork);
     setTerritory({ ...territory, status: 'completed', visits: territory.visits + visits });
     setLoading(false);
-    alert('🎉 Território concluído com sucesso!');
+    alert(`🎉 Território concluído por ${workerName}!`);
   };
 
   const handleShare = () => {
-    if (!territory) return;
-    
-    const shareData = {
-      title: `Território ${territory.number} - ${territory.name}`,
-      text: `📍 Território ${territory.number}: ${territory.name}\n📌 Endereço: ${territory.address}\n📍 Ponto de Partida: ${territory.latitude}, ${territory.longitude}\n🔗 ${window.location.href}`
-    };
-    
-    if (navigator.share) {
-      navigator.share(shareData).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(`${shareData.text}`).then(() => {
-        alert('📋 Informações copiadas para a área de transferência!');
-      });
-    }
+    navigator.clipboard.writeText(shareLink).then(() => {
+      alert('📋 Link copiado para a área de transferência! Compartilhe com outros publicadores.');
+    }).catch(() => {
+      alert(`📋 Compartilhe este link: ${shareLink}`);
+    });
   };
 
   const handleCancel = () => {
     if (!work || !territory) return;
     
-    if (confirm('Tem certeza que deseja cancelar este trabalho?')) {
+    if (confirm(`Tem certeza que deseja cancelar o trabalho de ${workerName}?`)) {
       setWork(null);
       setTerritory({ ...territory, status: 'available' });
       alert('🔄 Trabalho cancelado. Território disponível novamente.');
@@ -199,12 +175,10 @@ const TerritoryWorkerTest: React.FC = () => {
   }
 
   const startIcon = createStartIcon();
-  const territoryIcon = createTerritoryIcon();
-  const polygonPoints = getMockPolygon(territory.longitude, territory.latitude);
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header com navegação */}
+      {/* Header com navegação e compartilhamento */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <button
           onClick={() => navigate('/territories')}
@@ -214,12 +188,8 @@ const TerritoryWorkerTest: React.FC = () => {
           Voltar
         </button>
         <div className="flex gap-2 flex-wrap">
-          <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-xs font-medium flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
-            TESTE - Visualização
-          </span>
           <button
-            onClick={handleShare}
+            onClick={() => setShowShareModal(!showShareModal)}
             className="p-2 rounded-xl border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition flex items-center gap-2"
           >
             <Share2 className="w-4 h-4" />
@@ -235,6 +205,99 @@ const TerritoryWorkerTest: React.FC = () => {
         </div>
       </div>
 
+      {/* Modal de Compartilhamento */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <LinkIcon className="w-5 h-5" />
+                Compartilhar Território
+              </h2>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              Qualquer pessoa com este link pode acessar e trabalhar no território.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={shareLink}
+                readOnly
+                className="flex-1 px-4 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] text-sm"
+              />
+              <button
+                onClick={handleShare}
+                className="px-4 py-2 bg-[#1a3c6e] text-white rounded-lg hover:bg-[#153058] transition flex items-center gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Copiar
+              </button>
+            </div>
+            <div className="mt-4 text-xs text-[var(--text-muted)]">
+              🔗 O publicador precisará se identificar com o nome ao iniciar o trabalho.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Identificação do Publicador */}
+      {!isIdentified ? (
+        <div className="card mb-6 border-2 border-blue-200 dark:border-blue-800">
+          <div className="card-title text-lg">
+            <User className="w-6 h-6 text-blue-600" />
+            Identifique-se para trabalhar
+          </div>
+          <p className="text-sm text-[var(--text-muted)] mb-4">
+            Para iniciar o trabalho neste território, informe seu nome.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <input
+              type="text"
+              placeholder="Digite seu nome completo..."
+              value={workerName}
+              onChange={(e) => setWorkerName(e.target.value)}
+              className="flex-1 px-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+            />
+            <button
+              onClick={handleIdentify}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition flex items-center gap-2"
+            >
+              <User className="w-5 h-5" />
+              Identificar
+            </button>
+          </div>
+          <p className="text-xs text-[var(--text-muted)] mt-3">
+            ⚠️ O nome será registrado no histórico do território.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <User className="w-5 h-5 text-green-600" />
+            <span className="text-sm font-medium text-green-700 dark:text-green-400">
+              Trabalhando como: <strong>{workerName}</strong>
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              if (confirm('Deseja sair e identificar outro publicador?')) {
+                setIsIdentified(false);
+                setWorkerName('');
+              }
+            }}
+            className="text-xs text-red-500 hover:text-red-700 transition"
+          >
+            Trocar publicador
+          </button>
+        </div>
+      )}
+
       {/* Título e Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -249,12 +312,9 @@ const TerritoryWorkerTest: React.FC = () => {
           </span>
           {work?.status === 'in_progress' && (
             <span className="badge badge-blue text-sm px-4 py-1.5 animate-pulse">
-              🔴 Em Andamento
+              🔴 Em Andamento ({workerName})
             </span>
           )}
-          <span className="badge badge-purple text-sm px-3 py-1">
-            📐 Visualização
-          </span>
         </div>
       </div>
 
@@ -290,21 +350,18 @@ const TerritoryWorkerTest: React.FC = () => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
               
-              {/* Polígono do Território (mockado para visualização) */}
               {polygonPoints && polygonPoints.length > 0 && (
                 <Polygon
                   positions={polygonPoints}
                   pathOptions={{
-                    color: '#7c3aed',
-                    weight: 4,
-                    fillColor: '#8b5cf6',
-                    fillOpacity: 0.25
+                    color: '#1a3c6e',
+                    weight: 3,
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.2
                   }}
                 >
                   <Popup>
                     <div className="text-sm font-medium">
-                      <span className="text-purple-600">📐 Visualização</span>
-                      <br />
                       Território #{territory.number}
                       <br />
                       <span className="text-xs text-gray-500">{territory.name}</span>
@@ -313,7 +370,6 @@ const TerritoryWorkerTest: React.FC = () => {
                 </Polygon>
               )}
 
-              {/* Ponto de Partida - Destaque */}
               <Marker
                 position={[territory.longitude, territory.latitude]}
                 icon={startIcon}
@@ -335,12 +391,6 @@ const TerritoryWorkerTest: React.FC = () => {
                   </div>
                 </Popup>
               </Marker>
-
-              {/* Marcador do território */}
-              <Marker
-                position={[territory.longitude + 0.0005, territory.latitude + 0.0005]}
-                icon={territoryIcon}
-              />
             </MapContainer>
           ) : (
             <div className="h-[400px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
@@ -348,15 +398,15 @@ const TerritoryWorkerTest: React.FC = () => {
             </div>
           )}
           
-          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border-t border-purple-200 dark:border-purple-800 flex items-center justify-between flex-wrap gap-2">
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-4 text-sm">
               <span className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded-full bg-green-500 inline-block border-2 border-white shadow"></span>
                 <span className="text-[var(--text-muted)]">Ponto de Partida</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-purple-500 inline-block border-2 border-white shadow"></span>
-                <span className="text-[var(--text-muted)]">Área (Visualização)</span>
+                <span className="w-3 h-3 rounded-full bg-blue-500 inline-block border-2 border-white shadow"></span>
+                <span className="text-[var(--text-muted)]">Área do Território</span>
               </span>
             </div>
             <button
@@ -385,10 +435,6 @@ const TerritoryWorkerTest: React.FC = () => {
               <Navigation className="w-3 h-3" />
               Ponto de Partida: {territory.latitude}, {territory.longitude}
             </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              ✅ Modo visualização (polígono simulado)
-            </p>
           </div>
         </div>
 
@@ -401,7 +447,7 @@ const TerritoryWorkerTest: React.FC = () => {
             {work ? (
               <>
                 <p><span className="font-medium">Iniciado:</span> {new Date(work.startDate).toLocaleDateString('pt-BR')}</p>
-                <p><span className="font-medium">Por:</span> {work.workerName}</p>
+                <p><span className="font-medium">Por:</span> <strong>{work.workerName}</strong></p>
                 {work.endDate && (
                   <p><span className="font-medium">Finalizado:</span> {new Date(work.endDate).toLocaleDateString('pt-BR')}</p>
                 )}
@@ -414,88 +460,102 @@ const TerritoryWorkerTest: React.FC = () => {
         </div>
       </div>
 
-      {/* Controles do Worker */}
-      <div className="card mb-6 border-2 border-purple-200 dark:border-purple-800">
-        <div className="card-title text-lg">
-          <PlayCircle className="w-6 h-6 text-purple-600" />
-          Controle do Território (Modo Teste)
-        </div>
-        
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-              Número de Visitas
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={visits}
-              onChange={(e) => setVisits(parseInt(e.target.value) || 0)}
-              disabled={work?.status === 'completed'}
-              className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-            />
+      {/* Controles do Worker - APENAS PARA IDENTIFICADOS */}
+      {isIdentified && (
+        <div className="card mb-6 border-2 border-blue-200 dark:border-blue-800">
+          <div className="card-title text-lg">
+            <PlayCircle className="w-6 h-6 text-blue-600" />
+            Controle do Território
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-              Anotações
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              disabled={work?.status === 'completed'}
-              placeholder="Observações sobre o território..."
-              className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          {!work ? (
-            <button
-              onClick={handleStart}
-              disabled={loading}
-              className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-            >
-              <PlayCircle className="w-5 h-5" />
-              Iniciar Trabalho
-            </button>
-          ) : work.status === 'in_progress' ? (
-            <>
-              <button
-                onClick={handleComplete}
-                disabled={loading}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-              >
-                <CheckCircle className="w-5 h-5" />
-                Finalizar
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={loading}
-                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
-              >
-                <XCircle className="w-5 h-5" />
-                Cancelar
-              </button>
-            </>
-          ) : (
-            <div className="text-green-600 dark:text-green-400 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              Trabalho concluído com sucesso!
-            </div>
-          )}
           
-          <button
-            onClick={() => setShowInfo(!showInfo)}
-            className="px-6 py-2.5 border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl font-medium hover:bg-[var(--bg-hover)] transition-all duration-200 flex items-center gap-2"
-          >
-            <Eye className="w-4 h-4" />
-            {showInfo ? 'Ocultar' : 'Ver'} Informações
-          </button>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                Número de Visitas
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={visits}
+                onChange={(e) => setVisits(parseInt(e.target.value) || 0)}
+                disabled={work?.status === 'completed' || !isIdentified}
+                className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                Anotações
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                disabled={work?.status === 'completed' || !isIdentified}
+                placeholder="Observações sobre o território..."
+                className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            {!work ? (
+              <button
+                onClick={handleStart}
+                disabled={loading}
+                className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+              >
+                <PlayCircle className="w-5 h-5" />
+                Iniciar Trabalho
+              </button>
+            ) : work.status === 'in_progress' ? (
+              <>
+                <button
+                  onClick={handleComplete}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <CheckCircle className="w-5 h-5" />
+                  Finalizar
+                </button>
+                <button
+                  onClick={handleCancel}
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <XCircle className="w-5 h-5" />
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <div className="text-green-600 dark:text-green-400 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                Trabalho concluído com sucesso!
+              </div>
+            )}
+            
+            <button
+              onClick={() => setShowInfo(!showInfo)}
+              className="px-6 py-2.5 border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl font-medium hover:bg-[var(--bg-hover)] transition-all duration-200 flex items-center gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              {showInfo ? 'Ocultar' : 'Ver'} Informações
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {!isIdentified && (
+        <div className="alert alert-warning flex items-start gap-3">
+          <Info className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <strong>🔒 Identifique-se para trabalhar</strong>
+            <p className="text-sm mt-1">
+              Para iniciar, registrar visitas ou finalizar o território, você precisa se identificar com seu nome.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Informações Detalhadas */}
       {showInfo && (
@@ -531,12 +591,13 @@ const TerritoryWorkerTest: React.FC = () => {
       <div className="alert alert-info flex items-start gap-3">
         <Info className="w-5 h-5 mt-0.5 flex-shrink-0" />
         <div>
-          <strong>🧪 Modo Teste - Visualização:</strong>
+          <strong>📋 Como funciona o compartilhamento:</strong>
           <ul className="list-disc list-inside text-sm mt-1 space-y-1">
-            <li>Esta é uma versão de visualização do território</li>
-            <li>O polígono mostrado é uma simulação aproximada</li>
-            <li>Use o mapa para se localizar com o ponto de partida</li>
-            <li>Para voltar à versão original, use o botão "Voltar"</li>
+            <li>Compartilhe o link com qualquer publicador da congregação</li>
+            <li>Ao acessar, o publicador identifica-se com o nome</li>
+            <li>Registra visitas e anotações durante o trabalho</li>
+            <li>Ao finalizar, o território é marcado como concluído</li>
+            <li>O nome do publicador fica registrado no histórico</li>
           </ul>
         </div>
       </div>
@@ -544,4 +605,4 @@ const TerritoryWorkerTest: React.FC = () => {
   );
 };
 
-export default TerritoryWorkerTest;
+export default TerritoryWorkerPublic;
