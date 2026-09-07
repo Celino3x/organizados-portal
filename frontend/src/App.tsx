@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Territories from './pages/Territories';
 import TerritoryWorker from './pages/TerritoryWorker';
 import TerritoryWorkerTest from './pages/TerritoryWorkerTest';
+import TerritoryWorkerPublic from './pages/TerritoryWorkerPublic';
 import Designations from './pages/Designations';
 import Congregation from './pages/Congregation';
 import Reports from './pages/Reports';
@@ -20,6 +21,8 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            {/* Rota pública - não precisa de login */}
+            <Route path="/territories/:id/public" element={<TerritoryWorkerPublic />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <Layout />
