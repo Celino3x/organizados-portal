@@ -38,7 +38,6 @@ import {
   Minimize2
 } from 'lucide-react';
 import { territories, getStatusLabel, getStatusBadge, getTypeLabel } from '../data/territories';
-import { getLeafletPolygon, getPolygonByNumber } from '../data/polygons';
 
 interface TerritoryWork {
   id: string;
@@ -92,6 +91,20 @@ const createTerritoryIcon = () => {
   });
 };
 
+// Função para gerar polígono mockado (simulação)
+const getMockPolygon = (latitude: number, longitude: number) => {
+  const lat = latitude;
+  const lng = longitude;
+  const offset = 0.0015;
+  return [
+    [lng + offset, lat - offset],
+    [lng + offset, lat + offset],
+    [lng - offset, lat + offset],
+    [lng - offset, lat - offset],
+    [lng + offset, lat - offset]
+  ];
+};
+
 const TerritoryWorkerTest: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -104,25 +117,11 @@ const TerritoryWorkerTest: React.FC = () => {
   const [visits, setVisits] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [polygonData, setPolygonData] = useState<[number, number][] | null>(null);
-  const [polygonInfo, setPolygonInfo] = useState<any>(null);
 
   useEffect(() => {
     setIsClient(true);
     if (!territory) {
       navigate('/territories');
-    } else {
-      // Buscar polígono real do território
-      const polygon = getLeafletPolygon(territory.number);
-      const info = getPolygonByNumber(territory.number);
-      setPolygonData(polygon);
-      setPolygonInfo(info);
-      
-      console.log(`📊 Território ${territory.number} - ${territory.name}`);
-      console.log(`📐 Polígono real encontrado: ${polygon ? '✅ Sim' : '❌ Não'}`);
-      if (polygon) {
-        console.log(`📍 Pontos do polígono: ${polygon.length}`);
-      }
     }
   }, [territory, navigate]);
 
@@ -201,6 +200,7 @@ const TerritoryWorkerTest: React.FC = () => {
 
   const startIcon = createStartIcon();
   const territoryIcon = createTerritoryIcon();
+  const polygonPoints = getMockPolygon(territory.longitude, territory.latitude);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -216,7 +216,7 @@ const TerritoryWorkerTest: React.FC = () => {
         <div className="flex gap-2 flex-wrap">
           <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-xs font-medium flex items-center gap-1">
             <MapPin className="w-3 h-3" />
-            TESTE - Polígonos Reais
+            TESTE - Visualização
           </span>
           <button
             onClick={handleShare}
@@ -242,14 +242,6 @@ const TerritoryWorkerTest: React.FC = () => {
             Território #{territory.number}
           </h1>
           <p className="text-[var(--text-muted)]">{territory.name}</p>
-          {polygonInfo && polygonInfo.borders && (
-            <div className="text-xs text-[var(--text-muted)] mt-1 flex flex-wrap gap-2">
-              <span>Norte: {polygonInfo.borders.north}</span>
-              <span>| Sul: {polygonInfo.borders.south}</span>
-              <span>| Leste: {polygonInfo.borders.east}</span>
-              <span>| Oeste: {polygonInfo.borders.west}</span>
-            </div>
-          )}
         </div>
         <div className="flex items-center gap-3">
           <span className={`badge ${getStatusBadge(territory.status)} text-sm px-4 py-1.5`}>
@@ -260,15 +252,13 @@ const TerritoryWorkerTest: React.FC = () => {
               🔴 Em Andamento
             </span>
           )}
-          {polygonData && (
-            <span className="badge badge-purple text-sm px-3 py-1">
-              ✅ Polígono Real
-            </span>
-          )}
+          <span className="badge badge-purple text-sm px-3 py-1">
+            📐 Visualização
+          </span>
         </div>
       </div>
 
-      {/* MAPA - Com polígonos reais */}
+      {/* MAPA */}
       <div className={`mb-6 ${mapExpanded ? 'fixed inset-4 z-50' : ''}`}>
         <div className="card p-0 overflow-hidden relative">
           <div className="absolute top-2 right-2 z-10 flex gap-2">
@@ -300,10 +290,10 @@ const TerritoryWorkerTest: React.FC = () => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
               
-              {/* POLÍGONO REAL DO TERRITÓRIO (do KML) */}
-              {polygonData && polygonData.length > 0 ? (
+              {/* Polígono do Território (mockado para visualização) */}
+              {polygonPoints && polygonPoints.length > 0 && (
                 <Polygon
-                  positions={polygonData}
+                  positions={polygonPoints}
                   pathOptions={{
                     color: '#7c3aed',
                     weight: 4,
@@ -313,22 +303,14 @@ const TerritoryWorkerTest: React.FC = () => {
                 >
                   <Popup>
                     <div className="text-sm font-medium">
-                      <span className="text-purple-600">📐 Polígono Real</span>
+                      <span className="text-purple-600">📐 Visualização</span>
                       <br />
                       Território #{territory.number}
                       <br />
                       <span className="text-xs text-gray-500">{territory.name}</span>
-                      <br />
-                      <span className="text-xs text-gray-400">
-                        {polygonData.length} pontos
-                      </span>
                     </div>
                   </Popup>
                 </Polygon>
-              ) : (
-                <div className="text-center text-red-500 text-sm">
-                  ⚠️ Polígono não encontrado para este território
-                </div>
               )}
 
               {/* Ponto de Partida - Destaque */}
@@ -374,13 +356,8 @@ const TerritoryWorkerTest: React.FC = () => {
               </span>
               <span className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded-full bg-purple-500 inline-block border-2 border-white shadow"></span>
-                <span className="text-[var(--text-muted)]">Área Real (KML)</span>
+                <span className="text-[var(--text-muted)]">Área (Visualização)</span>
               </span>
-              {polygonData && (
-                <span className="text-xs text-purple-600 dark:text-purple-400">
-                  {polygonData.length} pontos
-                </span>
-              )}
             </div>
             <button
               onClick={() => window.open(`https://www.google.com/maps/dir//${territory.latitude},${territory.longitude}`, '_blank')}
@@ -408,12 +385,10 @@ const TerritoryWorkerTest: React.FC = () => {
               <Navigation className="w-3 h-3" />
               Ponto de Partida: {territory.latitude}, {territory.longitude}
             </p>
-            {polygonData && (
-              <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                ✅ Polígono real carregado ({polygonData.length} pontos)
-              </p>
-            )}
+            <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              ✅ Modo visualização (polígono simulado)
+            </p>
           </div>
         </div>
 
@@ -443,7 +418,7 @@ const TerritoryWorkerTest: React.FC = () => {
       <div className="card mb-6 border-2 border-purple-200 dark:border-purple-800">
         <div className="card-title text-lg">
           <PlayCircle className="w-6 h-6 text-purple-600" />
-          Controle do Território (Teste com Polígonos Reais)
+          Controle do Território (Modo Teste)
         </div>
         
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -556,12 +531,11 @@ const TerritoryWorkerTest: React.FC = () => {
       <div className="alert alert-info flex items-start gap-3">
         <Info className="w-5 h-5 mt-0.5 flex-shrink-0" />
         <div>
-          <strong>🧪 Modo Teste - Polígonos Reais do KML:</strong>
+          <strong>🧪 Modo Teste - Visualização:</strong>
           <ul className="list-disc list-inside text-sm mt-1 space-y-1">
-            <li>Os polígonos mostrados no mapa são extraídos do arquivo KML</li>
-            <li>Use o mapa para se localizar com a área exata do território</li>
-            <li>O ponto de partida está marcado com o ícone 🏠</li>
-            <li>Se o polígono não aparecer, o território não tem dados no KML</li>
+            <li>Esta é uma versão de visualização do território</li>
+            <li>O polígono mostrado é uma simulação aproximada</li>
+            <li>Use o mapa para se localizar com o ponto de partida</li>
             <li>Para voltar à versão original, use o botão "Voltar"</li>
           </ul>
         </div>
