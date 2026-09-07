@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  password    String
+  congregation String
+  phone       String?
+  gender      String   @default("male")
+  accessLevel String   @default("viewer")
+  privileges  String[] @default(["publisher"])
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  designations Designation[]
+  reports      Report[]
+
+  @@map("users")
+}
+
+model Territory {
+  id            String   @id @default(cuid())
+  number        Int      @unique
+  name          String
+  group         String
+  type          String
+  address       String
+  latitude      Float
+  longitude     Float
+  status        String   @default("available")
+  visits        Int      @default(0)
+  assignedTo    Int?
+  assignedToName String?
+  areaKm2       Float?
+  perimeter     Float?
+  bordersNorth  String?
+  bordersSouth  String?
+  bordersEast   String?
+  bordersWest   String?
+  imageUrl      String?
+  mapId         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  designations  Designation[]
+
+  @@map("territories")
+}
+
+model Designation {
+  id          Int      @id @default(autoincrement())
+  territoryId String
+  userId      Int
+  assignedAt  DateTime @default(now())
+  status      String   @default("pending")
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  territory   Territory @relation(fields: [territoryId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@map("designations")
+}
+
+model Report {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  month       String
+  hours       Int      @default(0)
+  visits      Int      @default(0)
+  studies     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, month])
+  @@map("reports")
+}
