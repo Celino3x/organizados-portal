@@ -26,12 +26,19 @@ import {
   Calendar,
   Home,
   Smartphone,
-  User as UserIcon
+  User as UserIcon,
+  Key,
+  Lock,
+  Unlock,
+  Crown,
+  Star,
+  BookOpen,
+  Clock,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
-// Interface do usuário
 interface UserData {
   id: number;
   name: string;
@@ -51,7 +58,6 @@ interface UserData {
   updatedAt: string;
 }
 
-// Interface para criação/edição
 interface UserFormData {
   name: string;
   email: string;
@@ -78,7 +84,6 @@ const Congregation: React.FC = () => {
   const [filterAccess, setFilterAccess] = useState('');
   const [filterActive, setFilterActive] = useState('');
   
-  // Modal de criação/edição
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [formData, setFormData] = useState<UserFormData>({
@@ -101,28 +106,24 @@ const Congregation: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
 
-  // Privilégios disponíveis
   const availablePrivileges = [
-    { value: 'publisher', label: '📖 Publicador' },
-    { value: 'pioneer', label: '🚀 Pioneiro' },
-    { value: 'ministerial', label: '⚜️ Servo Ministerial' },
-    { value: 'elder', label: '👑 Ancião' }
+    { value: 'publisher', label: 'Publicador', icon: BookOpen },
+    { value: 'pioneer', label: 'Pioneiro', icon: Star },
+    { value: 'ministerial', label: 'Servo Ministerial', icon: Shield },
+    { value: 'elder', label: 'Ancião', icon: Crown }
   ];
 
-  // Níveis de acesso
   const accessLevels = [
-    { value: 'viewer', label: '👁️ Visualizador' },
-    { value: 'support', label: '🛠️ Apoio' },
-    { value: 'admin', label: '👑 Administrador' }
+    { value: 'viewer', label: 'Visualizador', icon: Eye },
+    { value: 'support', label: 'Apoio', icon: Briefcase },
+    { value: 'admin', label: 'Administrador', icon: Crown }
   ];
 
-  // Classes disponíveis
   const classes = [
     'Outras Ovelhas',
     'Ungido'
   ];
 
-  // Buscar usuários
   const fetchUsers = async () => {
     try {
       const response = await api.get('/users');
@@ -138,7 +139,6 @@ const Congregation: React.FC = () => {
     fetchUsers();
   }, []);
 
-  // Filtros
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -150,7 +150,6 @@ const Congregation: React.FC = () => {
     });
   }, [users, search, filterAccess, filterActive]);
 
-  // Estatísticas
   const stats = {
     total: users.length,
     active: users.filter(u => u.isActive).length,
@@ -160,7 +159,6 @@ const Congregation: React.FC = () => {
     viewer: users.filter(u => u.accessLevel === 'viewer').length
   };
 
-  // Abrir modal para criar/editar
   const openModal = (user?: UserData) => {
     if (user) {
       setEditingUser(user);
@@ -205,19 +203,16 @@ const Congregation: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Fechar modal
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
     setFormError('');
   };
 
-  // Atualizar campo do formulário
   const handleFormChange = (field: keyof UserFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Alternar privilégio
   const togglePrivilege = (privilege: string) => {
     setFormData(prev => {
       const current = prev.privileges;
@@ -228,35 +223,30 @@ const Congregation: React.FC = () => {
     });
   };
 
-  // Salvar usuário
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
     setFormError('');
 
     try {
-      // Validar campos obrigatórios
       if (!formData.name || !formData.email || !formData.congregation) {
         setFormError('Nome, email e congregação são obrigatórios');
         setFormLoading(false);
         return;
       }
 
-      // Validar senha para novo usuário
       if (!editingUser && !formData.password) {
         setFormError('Senha é obrigatória para novo usuário');
         setFormLoading(false);
         return;
       }
 
-      // Validar confirmação de senha
       if (formData.password && formData.password !== formData.confirmPassword) {
         setFormError('As senhas não coincidem');
         setFormLoading(false);
         return;
       }
 
-      // Validar privilégios para mulheres
       if (formData.gender === 'female') {
         const invalidPrivileges = ['ministerial', 'elder'];
         const hasInvalid = formData.privileges.some(p => invalidPrivileges.includes(p));
@@ -302,7 +292,6 @@ const Congregation: React.FC = () => {
     }
   };
 
-  // Excluir usuário
   const handleDelete = async (user: UserData) => {
     if (user.id === currentUser?.id) {
       alert('Você não pode excluir seu próprio usuário');
@@ -319,7 +308,6 @@ const Congregation: React.FC = () => {
     }
   };
 
-  // Alternar status do usuário (Ativar/Inativar)
   const toggleActive = async (user: UserData) => {
     if (user.id === currentUser?.id) {
       alert('Você não pode inativar seu próprio usuário');
@@ -334,7 +322,6 @@ const Congregation: React.FC = () => {
     }
   };
 
-  // Obter label do privilégio
   const getPrivilegeLabel = (privilege: string) => {
     const map: Record<string, string> = {
       publisher: 'Publicador',
@@ -345,18 +332,16 @@ const Congregation: React.FC = () => {
     return map[privilege] || privilege;
   };
 
-  // Obter ícone do privilégio
   const getPrivilegeIcon = (privilege: string) => {
     const map: Record<string, React.ReactNode> = {
-      publisher: <User className="w-3 h-3" />,
-      pioneer: <Award className="w-3 h-3" />,
-      ministerial: <Shield className="w-3 h-3" />,
-      elder: <BadgeCheck className="w-3 h-3" />
+      publisher: <BookOpen className="w-4 h-4 text-[#64748b]" />,
+      pioneer: <Star className="w-4 h-4 text-yellow-500" />,
+      ministerial: <Shield className="w-4 h-4 text-blue-500" />,
+      elder: <Crown className="w-4 h-4 text-purple-500" />
     };
-    return map[privilege] || <User className="w-3 h-3" />;
+    return map[privilege] || <User className="w-4 h-4 text-[#64748b]" />;
   };
 
-  // Verificar se o usuário atual é admin
   const isAdmin = currentUser?.accessLevel === 'admin';
 
   if (!isAdmin) {
@@ -373,7 +358,6 @@ const Congregation: React.FC = () => {
 
   return (
     <div>
-      {/* Header */}
       <div className="header mb-8 text-center border-b-2 border-[var(--border-color)] pb-6">
         <h1 className="text-3xl font-extrabold text-[var(--text-primary)] tracking-tight flex items-center justify-center gap-3">
           <Users className="w-8 h-8 text-[#1a3c6e] dark:text-blue-400" />
@@ -524,12 +508,15 @@ const Congregation: React.FC = () => {
                     </td>
                     <td>
                       <div className="flex flex-wrap gap-1">
-                        {user.privileges.map((priv) => (
-                          <span key={priv} className="tech-tag flex items-center gap-1">
-                            {getPrivilegeIcon(priv)}
-                            {getPrivilegeLabel(priv)}
-                          </span>
-                        ))}
+                        {user.privileges.map((priv) => {
+                          const Icon = getPrivilegeIcon(priv);
+                          return (
+                            <span key={priv} className="tech-tag flex items-center gap-1">
+                              {Icon}
+                              {getPrivilegeLabel(priv)}
+                            </span>
+                          );
+                        })}
                       </div>
                     </td>
                     <td>
@@ -594,7 +581,6 @@ const Congregation: React.FC = () => {
         </div>
       )}
 
-      {/* Resumo */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 text-sm text-[var(--text-muted)]">
         <span>
           Mostrando <strong>{filteredUsers.length}</strong> de <strong>{users.length}</strong> publicadores
@@ -609,13 +595,23 @@ const Congregation: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Criação/Edição */}
+      {/* Modal de Criação/Edição com ícones padronizados */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">
-                {editingUser ? '✏️ Editar Publicador' : '👤 Novo Publicador'}
+              <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                {editingUser ? (
+                  <>
+                    <Edit className="w-6 h-6 text-[#1a3c6e]" />
+                    Editar Publicador
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-6 h-6 text-[#1a3c6e]" />
+                    Novo Publicador
+                  </>
+                )}
               </h2>
               <button
                 onClick={closeModal}
@@ -635,14 +631,15 @@ const Congregation: React.FC = () => {
             <form onSubmit={handleSave} className="space-y-4">
               {/* Seção: Dados Pessoais */}
               <div className="border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
-                  <UserIcon className="w-5 h-5" />
+                <h3 className="text-md font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <UserIcon className="w-5 h-5 text-[#1a3c6e]" />
                   Dados Pessoais
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <User className="w-4 h-4 text-[#1a3c6e]" />
                       Nome completo *
                     </label>
                     <input
@@ -654,7 +651,8 @@ const Congregation: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Mail className="w-4 h-4 text-[#1a3c6e]" />
                       Email *
                     </label>
                     <input
@@ -666,7 +664,8 @@ const Congregation: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Phone className="w-4 h-4 text-[#1a3c6e]" />
                       Telefone
                     </label>
                     <input
@@ -678,7 +677,8 @@ const Congregation: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Smartphone className="w-4 h-4 text-[#1a3c6e]" />
                       Celular
                     </label>
                     <input
@@ -690,7 +690,8 @@ const Congregation: React.FC = () => {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Home className="w-4 h-4 text-[#1a3c6e]" />
                       Endereço
                     </label>
                     <input
@@ -706,14 +707,15 @@ const Congregation: React.FC = () => {
 
               {/* Seção: Congregação */}
               <div className="border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
-                  <Home className="w-5 h-5" />
+                <h3 className="text-md font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <MapPin className="w-5 h-5 text-[#1a3c6e]" />
                   Informações da Congregação
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <MapPin className="w-4 h-4 text-[#1a3c6e]" />
                       Congregação *
                     </label>
                     <input
@@ -725,7 +727,8 @@ const Congregation: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Award className="w-4 h-4 text-[#1a3c6e]" />
                       Classe
                     </label>
                     <select
@@ -739,7 +742,8 @@ const Congregation: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <User className="w-4 h-4 text-[#1a3c6e]" />
                       Sexo
                     </label>
                     <select
@@ -752,7 +756,8 @@ const Congregation: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Calendar className="w-4 h-4 text-[#1a3c6e]" />
                       Data de Nascimento
                     </label>
                     <input
@@ -763,7 +768,8 @@ const Congregation: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Calendar className="w-4 h-4 text-[#1a3c6e]" />
                       Data de Batismo
                     </label>
                     <input
@@ -778,18 +784,20 @@ const Congregation: React.FC = () => {
 
               {/* Seção: Privilégios */}
               <div className="border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
-                  <Award className="w-5 h-5" />
+                <h3 className="text-md font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <Award className="w-5 h-5 text-[#1a3c6e]" />
                   Privilégios
                 </h3>
-                <p className="text-xs text-[var(--text-muted)] mb-2">
-                  ⚠️ Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos
+                <p className="text-xs text-[var(--text-muted)] mb-2 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {availablePrivileges.map((priv) => {
                     const isSelected = formData.privileges.includes(priv.value);
                     const isDisabled = formData.gender === 'female' && 
                       (priv.value === 'ministerial' || priv.value === 'elder');
+                    const Icon = priv.icon;
                     
                     return (
                       <button
@@ -797,12 +805,13 @@ const Congregation: React.FC = () => {
                         type="button"
                         disabled={isDisabled}
                         onClick={() => togglePrivilege(priv.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
                           isSelected
                             ? 'bg-[#1a3c6e] text-white dark:bg-blue-600'
                             : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                         } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-[var(--text-muted)]'}`} />
                         {priv.label}
                         {isDisabled && ' 🔒'}
                       </button>
@@ -813,12 +822,13 @@ const Congregation: React.FC = () => {
 
               {/* Seção: Nível de Acesso */}
               <div className="border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
-                  <Shield className="w-5 h-5" />
+                <h3 className="text-md font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <Shield className="w-5 h-5 text-[#1a3c6e]" />
                   Permissão
                 </h3>
                 <div>
-                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                    <Shield className="w-4 h-4 text-[#1a3c6e]" />
                     Nível de Acesso
                   </label>
                   <select
@@ -827,7 +837,10 @@ const Congregation: React.FC = () => {
                     className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
                   >
                     {accessLevels.map(level => (
-                      <option key={level.value} value={level.value}>{level.label}</option>
+                      <option key={level.value} value={level.value}>
+                        {level.icon && <level.icon className="w-4 h-4 inline" />}
+                        {level.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -835,14 +848,15 @@ const Congregation: React.FC = () => {
 
               {/* Seção: Segurança */}
               <div className="border-b border-[var(--border-color)] pb-4">
-                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
-                  <Shield className="w-5 h-5" />
+                <h3 className="text-md font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-4">
+                  <Lock className="w-5 h-5 text-[#1a3c6e]" />
                   Segurança
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                      {editingUser ? 'Nova Senha (deixe em branco para manter)' : 'Senha *'}
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Key className="w-4 h-4 text-[#1a3c6e]" />
+                      {editingUser ? 'Nova Senha' : 'Senha *'}
                     </label>
                     <input
                       type="password"
@@ -853,13 +867,15 @@ const Congregation: React.FC = () => {
                       minLength={6}
                       placeholder={editingUser ? 'Digite a nova senha' : 'Digite a senha'}
                     />
-                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                    <p className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-1">
+                      <Info className="w-3 h-3" />
                       {editingUser ? 'Deixe em branco para manter a atual' : 'Mínimo 6 caracteres'}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                      Confirmar Nova Senha
+                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                      <Lock className="w-4 h-4 text-[#1a3c6e]" />
+                      Confirmar Senha
                     </label>
                     <input
                       type="password"
@@ -874,7 +890,12 @@ const Congregation: React.FC = () => {
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1 flex items-center gap-1">
+                  {formData.isActive ? (
+                    <Unlock className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Lock className="w-4 h-4 text-red-500" />
+                  )}
                   Status
                 </label>
                 <select
@@ -892,8 +913,9 @@ const Congregation: React.FC = () => {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-6 py-2.5 border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl font-medium hover:bg-[var(--bg-hover)] transition"
+                  className="px-6 py-2.5 border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl font-medium hover:bg-[var(--bg-hover)] transition flex items-center gap-2"
                 >
+                  <X className="w-4 h-4" />
                   Cancelar
                 </button>
                 <button
@@ -901,7 +923,12 @@ const Congregation: React.FC = () => {
                   disabled={formLoading}
                   className="px-6 py-2.5 bg-[#1a3c6e] text-white rounded-xl font-medium hover:bg-[#153058] transition flex items-center gap-2 disabled:opacity-50"
                 >
-                  {formLoading ? 'Salvando...' : (
+                  {formLoading ? (
+                    <>
+                      <Clock className="w-4 h-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
                     <>
                       <Save className="w-4 h-4" />
                       {editingUser ? 'Atualizar' : 'Criar'}
