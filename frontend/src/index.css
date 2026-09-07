@@ -1,8 +1,8 @@
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import 'leaflet/dist/leaflet.css';
 
 /* ========================================
    VARIÁVEIS DE TEMA
@@ -432,7 +432,7 @@
   }
 
   /* Inputs */
-  input, select {
+  input, select, textarea {
     background-color: var(--bg-input);
     color: var(--text-primary);
     border-color: var(--input-border);
@@ -443,7 +443,7 @@
   }
 
   /* Headers */
-  .header h1, h2, h3, h4 {
+  .header h1, .header h2, .header h3, .header h4 {
     color: var(--text-primary);
   }
 
