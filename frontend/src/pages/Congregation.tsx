@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import {
-  Users,
-  User,
-  UserPlus,
-  UserCheck,
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Users, 
+  User, 
+  UserPlus, 
+  UserCheck, 
   UserX,
   Shield,
   BadgeCheck,
@@ -18,68 +18,272 @@ import {
   Mail,
   Phone,
   MapPin,
-  Award
+  Award,
+  X,
+  Check,
+  Save,
+  AlertCircle
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 
-interface Publisher {
-  id: string;
+// Interface do usuário
+interface UserData {
+  id: number;
   name: string;
   email: string;
-  phone: string;
   congregation: string;
+  phone?: string;
+  gender: 'male' | 'female';
+  accessLevel: 'viewer' | 'support' | 'admin';
   privileges: string[];
-  status: 'active' | 'inactive';
-  joinDate: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Interface para criação/edição
+interface UserFormData {
+  name: string;
+  email: string;
+  password?: string;
+  congregation: string;
+  phone?: string;
+  gender: 'male' | 'female';
+  accessLevel: 'viewer' | 'support' | 'admin';
+  privileges: string[];
+  isActive: boolean;
 }
 
 const Congregation: React.FC = () => {
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterAccess, setFilterAccess] = useState('');
+  const [filterActive, setFilterActive] = useState('');
+  
+  // Modal de criação/edição
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [formData, setFormData] = useState<UserFormData>({
+    name: '',
+    email: '',
+    password: '',
+    congregation: '',
+    phone: '',
+    gender: 'male',
+    accessLevel: 'viewer',
+    privileges: ['publisher'],
+    isActive: true
+  });
+  const [formError, setFormError] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
 
-  // Dados mockados
-  const publishers: Publisher[] = [
-    {
-      id: '1',
-      name: 'João Silva',
-      email: 'joao@email.com',
-      phone: '(21) 99999-9999',
-      congregation: 'Congregação Central',
-      privileges: ['publisher', 'elder'],
-      status: 'active',
-      joinDate: '2020-01-15'
-    },
-    {
-      id: '2',
-      name: 'Maria Santos',
-      email: 'maria@email.com',
-      phone: '(21) 99999-9998',
-      congregation: 'Congregação Central',
-      privileges: ['publisher', 'ministerial'],
-      status: 'active',
-      joinDate: '2021-03-10'
-    },
-    {
-      id: '3',
-      name: 'Pedro Oliveira',
-      email: 'pedro@email.com',
-      phone: '(21) 99999-9997',
-      congregation: 'Congregação Central',
-      privileges: ['publisher'],
-      status: 'active',
-      joinDate: '2022-06-20'
-    }
+  // Privilégios disponíveis
+  const availablePrivileges = [
+    { value: 'publisher', label: '📖 Publicador' },
+    { value: 'pioneer', label: '🚀 Pioneiro' },
+    { value: 'ministerial', label: '⚜️ Servo Ministerial' },
+    { value: 'elder', label: '👑 Ancião' }
   ];
 
-  const getPrivilegeIcon = (privilege: string) => {
-    const map: Record<string, React.ReactNode> = {
-      publisher: <User className="w-4 h-4" />,
-      pioneer: <Award className="w-4 h-4" />,
-      ministerial: <Shield className="w-4 h-4" />,
-      elder: <BadgeCheck className="w-4 h-4" />
-    };
-    return map[privilege] || <User className="w-4 h-4" />;
+  // Níveis de acesso
+  const accessLevels = [
+    { value: 'viewer', label: '👁️ Visualizador' },
+    { value: 'support', label: '🛠️ Apoio' },
+    { value: 'admin', label: '👑 Administrador' }
+  ];
+
+  // Buscar usuários
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Filtros
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
+                          u.email.toLowerCase().includes(search.toLowerCase());
+      const matchAccess = filterAccess === '' || filterAccess === 'Todos' || u.accessLevel === filterAccess;
+      const matchActive = filterActive === '' || filterActive === 'Todos' ||
+                          (filterActive === 'Ativo' ? u.isActive : !u.isActive);
+      return matchSearch && matchAccess && matchActive;
+    });
+  }, [users, search, filterAccess, filterActive]);
+
+  // Estatísticas
+  const stats = {
+    total: users.length,
+    active: users.filter(u => u.isActive).length,
+    inactive: users.filter(u => !u.isActive).length,
+    admin: users.filter(u => u.accessLevel === 'admin').length,
+    support: users.filter(u => u.accessLevel === 'support').length,
+    viewer: users.filter(u => u.accessLevel === 'viewer').length
+  };
+
+  // Abrir modal para criar/editar
+  const openModal = (user?: UserData) => {
+    if (user) {
+      setEditingUser(user);
+      setFormData({
+        name: user.name,
+        email: user.email,
+        password: '',
+        congregation: user.congregation,
+        phone: user.phone || '',
+        gender: user.gender,
+        accessLevel: user.accessLevel,
+        privileges: user.privileges,
+        isActive: user.isActive
+      });
+    } else {
+      setEditingUser(null);
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        congregation: '',
+        phone: '',
+        gender: 'male',
+        accessLevel: 'viewer',
+        privileges: ['publisher'],
+        isActive: true
+      });
+    }
+    setFormError('');
+    setIsModalOpen(true);
+  };
+
+  // Fechar modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingUser(null);
+    setFormError('');
+  };
+
+  // Atualizar campo do formulário
+  const handleFormChange = (field: keyof UserFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Alternar privilégio
+  const togglePrivilege = (privilege: string) => {
+    setFormData(prev => {
+      const current = prev.privileges;
+      const newPrivileges = current.includes(privilege)
+        ? current.filter(p => p !== privilege)
+        : [...current, privilege];
+      return { ...prev, privileges: newPrivileges };
+    });
+  };
+
+  // Salvar usuário
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLoading(true);
+    setFormError('');
+
+    try {
+      // Validar campos obrigatórios
+      if (!formData.name || !formData.email || !formData.congregation) {
+        setFormError('Nome, email e congregação são obrigatórios');
+        setFormLoading(false);
+        return;
+      }
+
+      // Validar senha para novo usuário
+      if (!editingUser && !formData.password) {
+        setFormError('Senha é obrigatória para novo usuário');
+        setFormLoading(false);
+        return;
+      }
+
+      // Validar privilégios para mulheres
+      if (formData.gender === 'female') {
+        const invalidPrivileges = ['ministerial', 'elder'];
+        const hasInvalid = formData.privileges.some(p => invalidPrivileges.includes(p));
+        if (hasInvalid) {
+          setFormError('Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos');
+          setFormLoading(false);
+          return;
+        }
+      }
+
+      const payload: any = {
+        name: formData.name,
+        email: formData.email,
+        congregation: formData.congregation,
+        phone: formData.phone,
+        gender: formData.gender,
+        accessLevel: formData.accessLevel,
+        privileges: formData.privileges,
+        isActive: formData.isActive
+      };
+
+      if (formData.password) {
+        payload.password = formData.password;
+      }
+
+      if (editingUser) {
+        await api.put(`/users/${editingUser.id}`, payload);
+      } else {
+        await api.post('/users', payload);
+      }
+
+      closeModal();
+      fetchUsers();
+    } catch (error: any) {
+      setFormError(error.response?.data?.error || 'Erro ao salvar usuário');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  // Excluir usuário
+  const handleDelete = async (user: UserData) => {
+    if (user.id === currentUser?.id) {
+      alert('Você não pode excluir seu próprio usuário');
+      return;
+    }
+
+    if (!confirm(`Tem certeza que deseja excluir o usuário "${user.name}"?`)) return;
+
+    try {
+      await api.delete(`/users/${user.id}`);
+      fetchUsers();
+    } catch (error) {
+      alert('Erro ao excluir usuário');
+    }
+  };
+
+  // Alternar status do usuário (Ativar/Inativar)
+  const toggleActive = async (user: UserData) => {
+    if (user.id === currentUser?.id) {
+      alert('Você não pode inativar seu próprio usuário');
+      return;
+    }
+
+    try {
+      await api.put(`/users/${user.id}`, { isActive: !user.isActive });
+      fetchUsers();
+    } catch (error) {
+      alert('Erro ao alterar status do usuário');
+    }
+  };
+
+  // Obter label do privilégio
   const getPrivilegeLabel = (privilege: string) => {
     const map: Record<string, string> = {
       publisher: 'Publicador',
@@ -90,18 +294,35 @@ const Congregation: React.FC = () => {
     return map[privilege] || privilege;
   };
 
-  const statuses = ['Todos', 'Ativo', 'Inativo'];
+  // Obter ícone do privilégio
+  const getPrivilegeIcon = (privilege: string) => {
+    const map: Record<string, React.ReactNode> = {
+      publisher: <User className="w-3 h-3" />,
+      pioneer: <Award className="w-3 h-3" />,
+      ministerial: <Shield className="w-3 h-3" />,
+      elder: <BadgeCheck className="w-3 h-3" />
+    };
+    return map[privilege] || <User className="w-3 h-3" />;
+  };
 
-  const filteredPublishers = publishers.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-                        p.email.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === '' || filterStatus === 'Todos' || 
-                        (filterStatus === 'Ativo' ? p.status === 'active' : p.status === 'inactive');
-    return matchSearch && matchStatus;
-  });
+  // Verificar se o usuário atual é admin
+  const isAdmin = currentUser?.accessLevel === 'admin';
+
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-[var(--text-muted)] text-center">
+          <Shield className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-lg font-medium">Acesso Restrito</p>
+          <p className="text-sm">Apenas administradores podem acessar esta página</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
+      {/* Header */}
       <div className="header mb-8 text-center border-b-2 border-[var(--border-color)] pb-6">
         <h1 className="text-3xl font-extrabold text-[var(--text-primary)] tracking-tight flex items-center justify-center gap-3">
           <Users className="w-8 h-8 text-[#1a3c6e] dark:text-blue-400" />
@@ -112,7 +333,35 @@ const Congregation: React.FC = () => {
         </p>
       </div>
 
-      {/* Filtros e Busca */}
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+        <div className="card text-center">
+          <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.total}</div>
+          <div className="text-xs text-[var(--text-muted)]">Total</div>
+        </div>
+        <div className="card text-center border-green-200 dark:border-green-800">
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.active}</div>
+          <div className="text-xs text-[var(--text-muted)]">Ativos</div>
+        </div>
+        <div className="card text-center border-red-200 dark:border-red-800">
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.inactive}</div>
+          <div className="text-xs text-[var(--text-muted)]">Inativos</div>
+        </div>
+        <div className="card text-center border-purple-200 dark:border-purple-800">
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.admin}</div>
+          <div className="text-xs text-[var(--text-muted)]">Admins</div>
+        </div>
+        <div className="card text-center border-blue-200 dark:border-blue-800">
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.support}</div>
+          <div className="text-xs text-[var(--text-muted)]">Apoio</div>
+        </div>
+        <div className="card text-center border-gray-200 dark:border-gray-800">
+          <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.viewer}</div>
+          <div className="text-xs text-[var(--text-muted)]">Visualizadores</div>
+        </div>
+      </div>
+
+      {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
@@ -127,116 +376,165 @@ const Congregation: React.FC = () => {
         <div className="relative">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
           <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            value={filterAccess}
+            onChange={(e) => setFilterAccess(e.target.value)}
             className="pl-10 pr-8 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e] dark:focus:ring-blue-400 transition appearance-none"
           >
-            {statuses.map(status => (
-              <option key={status} value={status}>{status}</option>
-            ))}
+            <option value="">Todos os níveis</option>
+            <option value="admin">Administrador</option>
+            <option value="support">Apoio</option>
+            <option value="viewer">Visualizador</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none" />
         </div>
-      </div>
-
-      {/* Tabela */}
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Publicador</th>
-              <th>Contato</th>
-              <th>Privilégios</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPublishers.length > 0 ? (
-              filteredPublishers.map((publisher) => (
-                <tr key={publisher.id} className="hover:bg-[var(--bg-hover)] transition">
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-[var(--text-muted)]" />
-                      <div>
-                        <div className="font-medium">{publisher.name}</div>
-                        <div className="text-xs text-[var(--text-muted)] flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {publisher.congregation}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Mail className="w-3 h-3 text-[var(--text-muted)]" />
-                        {publisher.email}
-                      </div>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Phone className="w-3 h-3 text-[var(--text-muted)]" />
-                        {publisher.phone}
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="flex flex-wrap gap-1">
-                      {publisher.privileges.map((priv) => (
-                        <span key={priv} className="tech-tag flex items-center gap-1">
-                          {getPrivilegeIcon(priv)}
-                          {getPrivilegeLabel(priv)}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`badge ${publisher.status === 'active' ? 'badge-green' : 'badge-red'}`}>
-                      {publisher.status === 'active' ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <button className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition" title="Visualizar">
-                        <Eye className="w-4 h-4 text-[var(--text-muted)]" />
-                      </button>
-                      <button className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition" title="Editar">
-                        <Edit className="w-4 h-4 text-[var(--text-muted)]" />
-                      </button>
-                      <button className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition" title="Excluir">
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="text-center py-8 text-[var(--text-muted)]">
-                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  Nenhum publicador encontrado
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Ações */}
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button className="px-6 py-2.5 bg-[#1a3c6e] text-white rounded-xl font-medium hover:bg-[#153058] transition-all duration-200 flex items-center gap-2">
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+          <select
+            value={filterActive}
+            onChange={(e) => setFilterActive(e.target.value)}
+            className="pl-10 pr-8 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e] dark:focus:ring-blue-400 transition appearance-none"
+          >
+            <option value="">Todos os status</option>
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none" />
+        </div>
+        <button
+          onClick={() => openModal()}
+          className="px-6 py-2.5 bg-[#1a3c6e] text-white rounded-xl font-medium hover:bg-[#153058] transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
+        >
           <UserPlus className="w-4 h-4" />
           Novo Publicador
         </button>
-        <button className="px-6 py-2.5 border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl font-medium hover:bg-[var(--bg-hover)] transition-all duration-200 flex items-center gap-2">
-          <UserCheck className="w-4 h-4" />
-          Importar Lista
-        </button>
       </div>
 
+      {/* Tabela */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-[var(--text-muted)]">Carregando...</div>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Publicador</th>
+                <th>Contato</th>
+                <th>Privilégios</th>
+                <th>Nível</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-[var(--bg-hover)] transition">
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${user.gender === 'male' ? 'bg-blue-500' : 'bg-pink-500'}`}>
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {user.congregation}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-sm">
+                          <Mail className="w-3 h-3 text-[var(--text-muted)]" />
+                          {user.email}
+                        </div>
+                        {user.phone && (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Phone className="w-3 h-3 text-[var(--text-muted)]" />
+                            {user.phone}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap gap-1">
+                        {user.privileges.map((priv) => (
+                          <span key={priv} className="tech-tag flex items-center gap-1">
+                            {getPrivilegeIcon(priv)}
+                            {getPrivilegeLabel(priv)}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        user.accessLevel === 'admin' ? 'badge-purple' :
+                        user.accessLevel === 'support' ? 'badge-blue' :
+                        'badge-gray'
+                      }`}>
+                        {user.accessLevel === 'admin' ? '👑 Admin' :
+                         user.accessLevel === 'support' ? '🛠️ Apoio' :
+                         '👁️ Visualizador'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${user.isActive ? 'badge-green' : 'badge-red'}`}>
+                        {user.isActive ? '✅ Ativo' : '❌ Inativo'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
+                          title="Editar"
+                          onClick={() => openModal(user)}
+                        >
+                          <Edit className="w-4 h-4 text-[var(--text-muted)]" />
+                        </button>
+                        <button
+                          className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
+                          title={user.isActive ? 'Inativar' : 'Ativar'}
+                          onClick={() => toggleActive(user)}
+                        >
+                          {user.isActive ? (
+                            <UserX className="w-4 h-4 text-red-500" />
+                          ) : (
+                            <UserCheck className="w-4 h-4 text-green-500" />
+                          )}
+                        </button>
+                        {user.id !== currentUser?.id && (
+                          <button
+                            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                            title="Excluir"
+                            onClick={() => handleDelete(user)}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-[var(--text-muted)]">
+                    <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    Nenhum publicador encontrado
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* Resumo */}
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-[var(--text-muted)]">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 text-sm text-[var(--text-muted)]">
         <span>
-          Mostrando <strong>{filteredPublishers.length}</strong> de <strong>{publishers.length}</strong> publicadores
+          Mostrando <strong>{filteredUsers.length}</strong> de <strong>{users.length}</strong> publicadores
         </span>
         <div className="flex flex-wrap gap-4">
           <span className="flex items-center gap-1">
@@ -247,6 +545,210 @@ const Congregation: React.FC = () => {
           </span>
         </div>
       </div>
+
+      {/* Modal de Criação/Edição */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">
+                {editingUser ? '✏️ Editar Publicador' : '👤 Novo Publicador'}
+              </h2>
+              <button
+                onClick={closeModal}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {formError && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleSave} className="space-y-4">
+              {/* Nome */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Nome completo *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleFormChange('name', e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                  required
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleFormChange('email', e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                  required
+                />
+              </div>
+
+              {/* Senha */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  {editingUser ? 'Nova senha (deixe em branco para manter)' : 'Senha *'}
+                </label>
+                <input
+                  type="password"
+                  value={formData.password || ''}
+                  onChange={(e) => handleFormChange('password', e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                  required={!editingUser}
+                  minLength={6}
+                />
+              </div>
+
+              {/* Congregação */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Congregação *
+                </label>
+                <input
+                  type="text"
+                  value={formData.congregation}
+                  onChange={(e) => handleFormChange('congregation', e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                  required
+                />
+              </div>
+
+              {/* Telefone */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Telefone
+                </label>
+                <input
+                  type="text"
+                  value={formData.phone || ''}
+                  onChange={(e) => handleFormChange('phone', e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
+              {/* Gênero */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Gênero
+                </label>
+                <select
+                  value={formData.gender}
+                  onChange={(e) => handleFormChange('gender', e.target.value as any)}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                >
+                  <option value="male">👨 Masculino</option>
+                  <option value="female">👩 Feminino</option>
+                </select>
+              </div>
+
+              {/* Nível de Acesso */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Nível de Acesso
+                </label>
+                <select
+                  value={formData.accessLevel}
+                  onChange={(e) => handleFormChange('accessLevel', e.target.value as any)}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                >
+                  {accessLevels.map(level => (
+                    <option key={level.value} value={level.value}>{level.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Privilégios */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                  Privilégios
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {availablePrivileges.map((priv) => {
+                    const isSelected = formData.privileges.includes(priv.value);
+                    const isDisabled = formData.gender === 'female' && 
+                      (priv.value === 'ministerial' || priv.value === 'elder');
+                    
+                    return (
+                      <button
+                        key={priv.value}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => togglePrivilege(priv.value)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          isSelected
+                            ? 'bg-[#1a3c6e] text-white dark:bg-blue-600'
+                            : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                        } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {priv.label}
+                        {isDisabled && ' ⚠️'}
+                      </button>
+                    );
+                  })}
+                </div>
+                {formData.gender === 'female' && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                    ⚠️ Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos
+                  </p>
+                )}
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Status
+                </label>
+                <select
+                  value={formData.isActive ? 'active' : 'inactive'}
+                  onChange={(e) => handleFormChange('isActive', e.target.value === 'active')}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                >
+                  <option value="active">✅ Ativo</option>
+                  <option value="inactive">❌ Inativo</option>
+                </select>
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-4 border-t border-[var(--border-color)]">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-6 py-2.5 border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl font-medium hover:bg-[var(--bg-hover)] transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formLoading}
+                  className="px-6 py-2.5 bg-[#1a3c6e] text-white rounded-xl font-medium hover:bg-[#153058] transition flex items-center gap-2 disabled:opacity-50"
+                >
+                  {formLoading ? 'Salvando...' : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      {editingUser ? 'Atualizar' : 'Criar'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
