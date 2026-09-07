@@ -12,14 +12,39 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'organizados_secret_key';
 
-// Middleware
+// ============================================
+// CONFIGURAÇÃO CORS ATUALIZADA
+// ============================================
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5000',
+  'https://organizados-portal.vercel.app',
+  'https://organizados-portal.vercel.app/',
+  'https://organizados-portal.onrender.com',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
+  origin: function (origin, callback) {
+    // Permitir requisições sem origin (como mobile apps ou curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('❌ Origem bloqueada pelo CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 app.use(express.json());
 
 console.log('🔥 Servidor iniciando...');
+console.log('📋 Origens permitidas:', allowedOrigins);
 
 // ============================================
 // ROTA DE TESTE
@@ -140,7 +165,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// ✅ ROTA DE VERIFICAÇÃO DE TOKEN (ADICIONADA)
+// Verificação de Token
 app.get('/api/auth/verify', async (req, res) => {
   console.log('🔍 GET /api/auth/verify');
   
@@ -197,7 +222,7 @@ console.log('  GET  /api/test');
 console.log('  GET  /api/health');
 console.log('  POST /api/auth/register');
 console.log('  POST /api/auth/login');
-console.log('  GET  /api/auth/verify'); // ✅ Adicionada
+console.log('  GET  /api/auth/verify');
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
