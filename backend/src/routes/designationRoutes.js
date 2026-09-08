@@ -110,7 +110,7 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
               speaker: part.speaker || 'Não designado',
               assistant: part.assistant || null,
               time: part.time || null,
-              song: section.song || null,
+              song: section.song ? String(section.song) : null,
               order: order++
             }
           });
