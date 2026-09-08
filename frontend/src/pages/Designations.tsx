@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   ClipboardList, 
   Calendar, 
@@ -24,8 +25,10 @@ import {
   X,
   Save,
   UserPlus,
-  UserCheck
+  UserCheck,
+  BookOpen
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 
 interface User {
@@ -73,6 +76,8 @@ interface UserFormData {
 }
 
 const Designations: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +91,12 @@ const Designations: React.FC = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [selectedField, setSelectedField] = useState<'speaker' | 'assistant'>('speaker');
+
+  // Tabs do submenu
+  const tabs = [
+    { path: '/designations/meetings', label: '📋 Reunião Vida e Ministério' },
+    { path: '/designations', label: '📌 Todas as Designações' },
+  ];
 
   const fetchUsers = async () => {
     try {
@@ -234,16 +245,39 @@ const Designations: React.FC = () => {
     year: 'numeric' 
   });
 
+  // Verificar se está na rota de designações
+  const isDesignationsRoute = location.pathname === '/designations';
+
   return (
     <div className="pb-8">
+      {/* Submenu de Designações */}
+      <div className="flex flex-wrap gap-2 mb-6 border-b border-[var(--border-color)] pb-3">
+        {tabs.map((tab) => {
+          const isActive = location.pathname === tab.path;
+          return (
+            <Link
+              key={tab.path}
+              to={tab.path}
+              className={`px-4 py-2 rounded-lg font-medium transition text-sm md:text-base ${
+                isActive
+                  ? 'bg-[#1a3c6e] text-white'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
+
       {/* Header */}
       <div className="header mb-6 text-center border-b-2 border-[var(--border-color)] pb-4">
         <h1 className="text-2xl md:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight flex items-center justify-center gap-3">
           <ClipboardList className="w-6 h-6 md:w-8 md:h-8 text-[#1a3c6e] dark:text-blue-400" />
-          Designações
+          Todas as Designações
         </h1>
         <p className="text-sm md:text-base text-[var(--text-muted)] mt-1">
-          Gerencie as designações das reuniões
+          Visualize e gerencie todas as designações por data
         </p>
       </div>
 
