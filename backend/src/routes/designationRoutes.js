@@ -59,18 +59,39 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
       });
     }
 
+    // ============================================
+    // CORREÇÃO: parsedData.date já é um objeto Date
+    // ============================================
+    const meetingDate = new Date(parsedData.date);
+    
+    // Verificar se a data é válida
+    if (isNaN(meetingDate.getTime())) {
+      console.error('❌ Data inválida:', parsedData.date);
+      return res.status(400).json({ 
+        error: 'Data inválida extraída do arquivo' 
+      });
+    }
+
+    console.log(`📅 Data da reunião: ${meetingDate.toISOString()}`);
+
     // Salvar no banco
     const designs = [];
     let order = 0;
 
     // Usar transação para garantir consistência
     const result = await prisma.$transaction(async (tx) => {
+      // Criar range de datas (início e fim do dia)
+      const startDate = new Date(meetingDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(meetingDate);
+      endDate.setHours(23, 59, 59, 999);
+
       // Primeiro, remover designações existentes para esta data
       await tx.meetingDesignation.deleteMany({
         where: {
           date: {
-            gte: new Date(parsedData.date.setHours(0, 0, 0, 0)),
-            lt: new Date(parsedData.date.setHours(23, 59, 59, 999))
+            gte: startDate,
+            lte: endDate
           }
         }
       });
@@ -81,8 +102,8 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
         for (const part of section.parts) {
           const createdItem = await tx.meetingDesignation.create({
             data: {
-              date: parsedData.date,
-              meetingType: parsedData.meetingType,
+              date: meetingDate,
+              meetingType: parsedData.meetingType || 'midweek',
               section: section.name,
               partNumber: part.number,
               partName: part.name,
@@ -418,7 +439,7 @@ router.get('/export/:date', async (req, res) => {
           song: d.song
         });
         return acc;
-     }, {}),
+      }, {}),
       total: designs.length
     };
 
