@@ -7,13 +7,11 @@ import {
   ClipboardList,
   RefreshCw,
   FileCheck,
-  Bell,
-  TrendingUp,
+  Info,
   Activity,
   Clock,
-  AlertCircle,
-  Award,
-  Info  // ← ADICIONADO
+  TrendingUp,
+  Award
 } from 'lucide-react';
 
 interface Stats {
@@ -92,7 +90,7 @@ const Dashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-[#64748b] dark:text-gray-400 flex items-center gap-3">
+        <div className="text-[var(--text-muted)] flex items-center gap-3">
           <RefreshCw className="w-5 h-5 animate-spin" />
           Carregando estatísticas...
         </div>
@@ -103,33 +101,33 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       {/* Header */}
-      <div className="header mb-8 text-center border-b-2 border-[#e6ecf5] dark:border-[#334155] pb-6">
+      <div className="header mb-6 text-center border-b-2 border-[var(--border-color)] pb-4 md:pb-6">
         <div className="flex items-center justify-center gap-3 mb-2">
-          <MapPin className="w-12 h-12 text-[#1a3c6e] dark:text-blue-400" />
+          <MapPin className="w-8 h-8 md:w-12 md:h-12 text-[#1a3c6e] dark:text-blue-400" />
         </div>
-        <h1 className="text-3xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight">
           Portal Organizados
         </h1>
-        <p className="text-[#64748b] dark:text-gray-400 text-base mt-1">
+        <p className="text-sm md:text-base text-[var(--text-muted)] mt-1">
           Sistema de Gestão para Congregações
         </p>
-        <div className="version inline-block mt-3 px-4 py-1 bg-[#e8eeff] dark:bg-[#1a3c6e]/30 text-[#1a3c6e] dark:text-blue-400 rounded-full text-xs font-semibold">
+        <div className="version inline-block mt-2 md:mt-3 px-3 py-1 md:px-4 md:py-1 bg-[var(--badge-bg)] text-[var(--badge-text)] rounded-full text-xs font-semibold">
           v1.0.0 · Setembro 2026
         </div>
       </div>
 
-      {/* Cards */}
-      <div className="card-grid">
+      {/* Cards - Grid responsivo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
         {cards.map((card, index) => {
           const Icon = card.icon;
           return (
-            <div key={index} className="card">
-              <div className="card-title">
-                <Icon className={`w-5 h-5 ${card.color}`} />
+            <div key={index} className="card p-4 md:p-6">
+              <div className="card-title text-sm md:text-base">
+                <Icon className={`w-4 h-4 md:w-5 md:h-5 ${card.color}`} />
                 {card.title}
               </div>
               <div className="card-desc mt-2">
-                <span className={`badge ${card.badge} text-base font-bold px-4 py-1.5`}>
+                <span className={`badge ${card.badge} text-base md:text-lg font-bold px-3 py-1 md:px-4 md:py-1.5`}>
                   {card.value}
                 </span>
               </div>
@@ -138,49 +136,48 @@ const Dashboard: React.FC = () => {
         })}
       </div>
 
-      {/* Boas-vindas - USANDO AlertCircle EM VEZ DE Info */}
-      <div className="alert alert-info flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-        <div>
+      {/* Boas-vindas */}
+      <div className="alert alert-info flex items-start gap-3 mt-6 p-3 md:p-4">
+        <Info className="w-4 h-4 md:w-5 md:h-5 mt-0.5 flex-shrink-0" />
+        <div className="text-sm md:text-base">
           <strong>Bem-vindo(a), {user?.name}!</strong>
           <br />
-          O Portal Organizados está pronto para uso. Gerencie territórios, designações e publicadores da sua congregação.
+          <span className="text-xs md:text-sm">O Portal Organizados está pronto para uso. Gerencie territórios, designações e publicadores da sua congregação.</span>
         </div>
       </div>
 
       {/* Atividades Recentes */}
-      <div className="mt-8">
-        <h2 className="text-2xl font-bold text-[#0f172a] dark:text-white border-b-2 border-[#e6ecf5] dark:border-[#334155] pb-2 mb-4 flex items-center gap-2">
-          <Activity className="w-6 h-6" />
+      <div className="mt-6 md:mt-8">
+        <h2 className="text-lg md:text-2xl font-bold text-[var(--text-primary)] border-b-2 border-[var(--border-color)] pb-2 mb-4 flex items-center gap-2">
+          <Activity className="w-5 h-5 md:w-6 md:h-6" />
           Atividades Recentes
         </h2>
-        <div className="card">
-          <div className="card-desc text-center py-8 text-[#64748b] dark:text-gray-400">
-            <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            Nenhuma atividade recente
-            <br />
-            <span className="text-sm">Comece gerenciando seus territórios!</span>
+        <div className="card p-4 md:p-6">
+          <div className="card-desc text-center py-6 md:py-8 text-[var(--text-muted)]">
+            <Clock className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-3 opacity-50" />
+            <p className="text-sm md:text-base">Nenhuma atividade recente</p>
+            <span className="text-xs md:text-sm">Comece gerenciando seus territórios!</span>
           </div>
         </div>
       </div>
 
-      {/* Dicas Rápidas */}
-      <div className="mt-6 feature-grid">
-        <div className="feature-item">
-          <MapPin className="w-5 h-5 text-[#1a3c6e]" />
-          <span>64 territórios disponíveis</span>
+      {/* Dicas Rápidas - Responsivo */}
+      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+        <div className="feature-item p-2 md:p-3 text-xs md:text-sm">
+          <MapPin className="w-4 h-4 md:w-5 md:h-5 text-[#1a3c6e] flex-shrink-0" />
+          <span className="truncate">64 territórios</span>
         </div>
-        <div className="feature-item">
-          <ClipboardList className="w-5 h-5 text-[#1a3c6e]" />
-          <span>Designações de territórios</span>
+        <div className="feature-item p-2 md:p-3 text-xs md:text-sm">
+          <ClipboardList className="w-4 h-4 md:w-5 md:h-5 text-[#1a3c6e] flex-shrink-0" />
+          <span className="truncate">Designações</span>
         </div>
-        <div className="feature-item">
-          <Users className="w-5 h-5 text-[#1a3c6e]" />
-          <span>Gerenciar publicadores</span>
+        <div className="feature-item p-2 md:p-3 text-xs md:text-sm">
+          <Users className="w-4 h-4 md:w-5 md:h-5 text-[#1a3c6e] flex-shrink-0" />
+          <span className="truncate">Publicadores</span>
         </div>
-        <div className="feature-item">
-          <TrendingUp className="w-5 h-5 text-[#1a3c6e]" />
-          <span>Relatórios da congregação</span>
+        <div className="feature-item p-2 md:p-3 text-xs md:text-sm">
+          <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-[#1a3c6e] flex-shrink-0" />
+          <span className="truncate">Relatórios</span>
         </div>
       </div>
     </div>
