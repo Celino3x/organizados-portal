@@ -2,17 +2,18 @@
 
 class RTFParser {
   constructor() {
+    // Mesmo padrão do PHP
     this.sectionPatterns = [
       { 
-        patterns: ['TESOUROS DA PALAVRA DE DEUS', 'TESOUROS', 'TESOUROS DA PALAVRA'],
+        patterns: ['TESOUROS DA PALAVRA DE DEUS', 'TESOUROS'],
         name: 'Tesouros da Palavra de Deus'
       },
       { 
-        patterns: ['FAÇA SEU MELHOR NO MINISTÉRIO', 'FAÇA SEU MELHOR', 'MINISTÉRIO', 'FAÇA O SEU MELHOR'],
+        patterns: ['FAÇA SEU MELHOR NO MINISTÉRIO', 'FACA SEU MELHOR NO MINISTERIO', 'MINISTÉRIO', 'MINISTERIO'],
         name: 'Faça seu melhor no ministério'
       },
       { 
-        patterns: ['NOSSA VIDA CRISTÃ', 'VIDA CRISTÃ', 'NOSSA VIDA'],
+        patterns: ['NOSSA VIDA CRISTÃ', 'NOSSA VIDA CRISTA'],
         name: 'Nossa vida cristã'
       }
     ];
@@ -25,261 +26,315 @@ class RTFParser {
   }
 
   /**
-   * Parse o conteúdo RTF e extrai as designações
+   * Parse o conteúdo RTF - similar ao PHP
    */
   parseRTF(rtfContent) {
-    // Extrair texto do RTF
-    const plainText = this.extractTextFromRTF(rtfContent);
-    const lines = plainText.split('\n').map(l => l.trim()).filter(l => l);
-
-    console.log('📄 === INÍCIO DO PARSE RTF ===');
-    console.log(`📄 Total de linhas extraídas: ${lines.length}`);
-    console.log('📄 Primeiras 20 linhas:');
-    lines.slice(0, 20).forEach((line, idx) => {
-      console.log(`  ${idx + 1}: "${line}"`);
-    });
-    console.log('📄 Últimas 10 linhas:');
-    lines.slice(-10).forEach((line, idx) => {
-      console.log(`  ${lines.length - 10 + idx + 1}: "${line}"`);
-    });
-
+    // 1. Converter RTF para texto (igual ao PHP)
+    const text = this.rtfToText(rtfContent);
+    
+    console.log('📄 === INÍCIO PARSE RTF ===');
+    console.log(`📄 Tamanho do texto: ${text.length} caracteres`);
+    console.log('📄 Primeiros 500 caracteres:');
+    console.log(text.substring(0, 500));
+    
+    // 2. Extrair dados como o PHP faz
     const result = {
-      date: null,
+      date: this.extractSemanaTextual(text),
       meetingType: 'midweek',
-      sections: []
+      sections: [],
+      songs: this.extractCanticos(text)
     };
+    
+    console.log(`📅 Semana textual: ${result.date}`);
+    console.log(`🎵 Cânticos: abertura=${result.songs.abertura}, meio=${result.songs.meio}, final=${result.songs.final}`);
 
-    let currentSection = null;
-    let i = 0;
-
-    while (i < lines.length) {
-      const line = lines[i];
-      const upperLine = line.toUpperCase();
+    // 3. Detectar blocos (igual ao PHP)
+    const blocks = this.detectBlocks(text);
+    
+    // 4. Extrair partes de cada bloco
+    const allParts = [];
+    for (const [sectionName, blockLines] of Object.entries(blocks)) {
+      const parts = this.extractPartsFromBlock(blockLines, sectionName);
+      allParts.push(...parts);
       
-      // Detectar data
-      if (this.isDateLine(line)) {
-        result.date = this.parseDate(line);
-        console.log(`📅 Data encontrada: "${line}" -> ${result.date}`);
-        i++;
-        continue;
-      }
-
-      // Detectar seção
-      const sectionMatch = this.detectSection(line);
-      if (sectionMatch) {
-        console.log(`📂 Seção encontrada: "${line}" -> ${sectionMatch}`);
-        currentSection = {
-          name: sectionMatch,
-          parts: [],
-          song: null
+      if (parts.length > 0) {
+        console.log(`📂 Seção ${sectionName}: ${parts.length} partes encontradas`);
+        // Adicionar seção ao resultado
+        const section = {
+          name: this.getSectionDisplayName(sectionName),
+          parts: parts.map(p => ({
+            number: p.numero.toString(),
+            name: p.tema,
+            time: p.minutos ? `${p.minutos} min` : null,
+            speaker: null, // Será preenchido depois se disponível
+            assistant: null
+          })),
+          song: sectionName === 'CRISTA' ? result.songs.final : 
+                sectionName === 'MINISTERIO' ? result.songs.meio : 
+                result.songs.abertura
         };
-        result.sections.push(currentSection);
-        i++;
-        continue;
+        result.sections.push(section);
       }
-
-      // Detectar Cântico
-      const songMatch = line.match(/Cântico\s+(\d+)/i);
-      if (songMatch && currentSection) {
-        currentSection.song = songMatch[1];
-        console.log(`🎵 Cântico: ${songMatch[1]}`);
-        i++;
-        continue;
+    }
+    
+    // 5. Se não encontrou seções, tentar detectar partes soltas
+    if (result.sections.length === 0) {
+      console.log('⚠️ Nenhuma seção encontrada, tentando detectar partes soltas...');
+      const looseParts = this.extractLooseParts(text);
+      if (looseParts.length > 0) {
+        result.sections.push({
+          name: 'Tesouros da Palavra de Deus',
+          parts: looseParts.map(p => ({
+            number: p.numero.toString(),
+            name: p.tema,
+            time: p.minutos ? `${p.minutos} min` : null,
+            speaker: null,
+            assistant: null
+          })),
+          song: result.songs.abertura
+        });
+        console.log(`📌 ${looseParts.length} partes soltas encontradas`);
       }
-
-      // Detectar parte da reunião
-      const partMatch = this.detectPart(line);
-      if (partMatch && currentSection) {
-        console.log(`📌 Parte encontrada: ${partMatch.number}. ${partMatch.name} (${partMatch.time || 'sem tempo'})`);
-        const part = {
-          number: partMatch.number,
-          name: partMatch.name,
-          time: partMatch.time,
-          speaker: null,
-          assistant: null
-        };
-
-        // Procurar pelo designado nas próximas linhas
-        const speakerInfo = this.findSpeaker(lines, i + 1);
-        if (speakerInfo) {
-          part.speaker = speakerInfo.speaker;
-          part.assistant = speakerInfo.assistant;
-          console.log(`  👤 Designado: ${part.speaker || 'não encontrado'}`);
-          if (part.assistant) {
-            console.log(`  👥 Ajudante: ${part.assistant}`);
-          }
-          if (speakerInfo.linesSkipped > 0) {
-            i += speakerInfo.linesSkipped;
-          }
-        }
-
-        currentSection.parts.push(part);
-        i++;
-        continue;
-      }
-
-      i++;
     }
 
-    // Se não encontrou data, usar a data atual
+    // 6. Se ainda não encontrou data, usar a data atual
     if (!result.date) {
-      result.date = new Date();
+      const now = new Date();
+      result.date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       console.log('⚠️ Nenhuma data encontrada, usando data atual');
     }
 
-    console.log('📊 === RESUMO DO PARSE ===');
-    console.log(`  📅 Data: ${result.date.toISOString().split('T')[0]}`);
-    console.log(`  📂 Seções encontradas: ${result.sections.length}`);
-    if (result.sections.length === 0) {
-      console.log('  ⚠️ NENHUMA SEÇÃO ENCONTRADA!');
-      console.log('  🔍 Verifique se o texto contém:');
-      console.log('     - "Tesouros da Palavra de Deus"');
-      console.log('     - "Faça seu melhor no ministério"');
-      console.log('     - "Nossa vida cristã"');
-    }
+    console.log('📊 === RESUMO ===');
+    console.log(`  📅 Data: ${result.date}`);
+    console.log(`  📂 Seções: ${result.sections.length}`);
     result.sections.forEach(s => {
       console.log(`    - ${s.name}: ${s.parts.length} partes`);
-      s.parts.forEach(p => {
-        console.log(`      ${p.number}. ${p.name} (${p.speaker || 'sem designado'})`);
-      });
     });
-    console.log('📄 === FIM DO PARSE RTF ===');
 
     return result;
   }
 
   /**
-   * Extrai texto puro do RTF
+   * Converter RTF para texto (igual ao PHP)
    */
-  extractTextFromRTF(rtf) {
-    let text = rtf;
+  rtfToText(rtf) {
+    let s = rtf;
     
-    // Remover cabeçalho RTF
-    text = text.replace(/{\\rtf[^}]*}/i, '');
+    // Converter \par para quebras de linha
+    s = s.replace(/\\par[d]?/gi, '\n');
     
-    // Remover comandos RTF
-    text = text.replace(/\\[a-z]+(?:\s*[-]?\d+)?/g, '');
-    text = text.replace(/\\'[0-9a-f]{2}/g, (match) => {
-      const code = parseInt(match.substring(2), 16);
-      return String.fromCharCode(code);
+    // Converter caracteres Unicode (\uXXXX)
+    s = s.replace(/\\u(-?\d+)\??/g, (match, code) => {
+      const num = parseInt(code);
+      return String.fromCharCode(num < 0 ? num + 65536 : num);
     });
     
+    // Converter caracteres acentuados (\'XX)
+    s = s.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => {
+      return Buffer.from(hex, 'hex').toString('latin1');
+    });
+    
+    // Remover comandos RTF
+    s = s.replace(/\\[a-zA-Z]+-?\d*/g, '');
+    
     // Remover chaves
-    text = text.replace(/[{}]/g, '');
+    s = s.replace(/[{}]/g, '');
     
-    // Substituir quebras de linha
-    text = text.replace(/\\par/g, '\n');
-    text = text.replace(/\\line/g, '\n');
-    text = text.replace(/\\tab/g, ' ');
+    // Remover espaços excessivos
+    s = s.replace(/[ \t]+\n/g, '\n');
+    s = s.replace(/\n{3,}/g, '\n\n');
     
-    // Remover espaços extras e normalizar
-    text = text.replace(/\s+/g, ' ');
-    text = text.split('\n').map(line => line.trim()).join('\n');
-    
-    return text.trim();
+    return s.trim();
   }
 
   /**
-   * Verifica se a linha contém a data
+   * Extrair semana textual (igual ao PHP)
    */
-  isDateLine(line) {
-    return line.match(/\d+\s+DE\s+\w+/i) !== null;
-  }
-
-  /**
-   * Parse da data
-   */
-  parseDate(dateStr) {
-    const parts = dateStr.split('-').map(s => s.trim());
+  extractSemanaTextual(text) {
+    const normalized = text.replace(/\s+/g, ' ');
     
-    const match = parts[0].match(/(\d+)\s+DE\s+(\w+)/i);
-    if (match) {
-      const day = parseInt(match[1]);
-      const monthName = match[2].toUpperCase();
-      const month = this.months[monthName] || 1;
-      const year = new Date().getFullYear();
-      
-      const date = new Date(year, month - 1, day);
-      
-      if (date > new Date()) {
-        date.setFullYear(year - 1);
-      }
-      
-      return date;
+    // Padrão: "28 DE SETEMBRO - 4 DE OUTUBRO"
+    const match1 = normalized.match(/(\d{1,2})\s*(?:a|–|-)\s*(\d{1,2})\s+de\s+([a-zçãéíóú]+)/i);
+    if (match1) {
+      return `${match1[1]}–${match1[2]} DE ${match1[3].toUpperCase()}`;
     }
     
-    return new Date();
-  }
-
-  /**
-   * Detecta se a linha é uma seção
-   */
-  detectSection(line) {
-    const upperLine = line.toUpperCase();
-    
-    for (const pattern of this.sectionPatterns) {
-      for (const p of pattern.patterns) {
-        if (upperLine.includes(p)) {
-          return pattern.name;
-        }
-      }
+    // Padrão: "28 DE SETEMBRO–4 DE OUTUBRO"
+    const match2 = normalized.match(/(\d{1,2})\s+de\s+([a-zçãéíóú]+)\s*(?:–|-)\s*(\d{1,2})\s+de\s+([a-zçãéíóú]+)/i);
+    if (match2) {
+      return `${match2[1]} DE ${match2[2].toUpperCase()}–${match2[3]} DE ${match2[4].toUpperCase()}`;
     }
     
     return null;
   }
 
   /**
-   * Detecta se a linha é uma parte da reunião
+   * Extrair cânticos (igual ao PHP)
    */
-  detectPart(line) {
-    // Padrão: "1. Nome da parte (10 min)"
-    const match = line.match(/^(\d+)\.\s+(.+?)(?:\s*\((\d+)\s*min\))?\s*$/i);
-    if (match) {
-      return {
-        number: match[1],
-        name: match[2].trim(),
-        time: match[3] ? `${match[3]} min` : null
-      };
+  extractCanticos(text) {
+    const matches = text.match(/C[âa]ntico\s*(\d{1,3})/gi);
+    const numbers = [];
+    if (matches) {
+      for (const m of matches) {
+        const num = m.match(/\d+/);
+        if (num) numbers.push(parseInt(num[0]));
+      }
     }
-    return null;
+    
+    return {
+      abertura: numbers[0] || null,
+      meio: numbers[1] || null,
+      final: numbers[2] || null
+    };
   }
 
   /**
-   * Encontra o nome do designado nas próximas linhas
+   * Detectar blocos (igual ao PHP)
    */
-  findSpeaker(lines, startIndex) {
-    let speaker = null;
-    let assistant = null;
-    let linesSkipped = 0;
-
-    for (let i = startIndex; i < Math.min(startIndex + 5, lines.length); i++) {
-      const line = lines[i];
-      
-      if (!line) break;
-      
-      // Pular linhas com parte ou seção
-      if (this.detectPart(line) || this.detectSection(line)) {
-        break;
+  detectBlocks(text) {
+    const lines = text.split('\n').map(l => l.trim());
+    const upperLines = lines.map(l => this.removeAccents(l.toUpperCase()));
+    
+    let iTes = -1, iMin = -1, iCri = -1;
+    
+    for (let i = 0; i < upperLines.length; i++) {
+      const line = upperLines[i];
+      if (iTes === -1 && (line.includes('TESOUROS DA PALAVRA DE DEUS') || line.includes('TESOUROS'))) {
+        iTes = i;
       }
-
-      // Verificar se tem ajudante
-      const assistantMatch = line.match(/^(.+?)\s*,\s*(.+?)(?:\s*\(ajudante\))?$/i);
-      if (assistantMatch) {
-        speaker = assistantMatch[1].trim();
-        assistant = assistantMatch[2].trim();
-        linesSkipped = 1;
-        break;
+      if (iMin === -1 && (line.includes('FACA SEU MELHOR NO MINISTERIO') || line.includes('FAÇA SEU MELHOR NO MINISTÉRIO') || line.includes('MINISTERIO'))) {
+        iMin = i;
       }
-
-      // Apenas o designado
-      if (line.length > 2 && !line.match(/^\d/) && !this.isDateLine(line)) {
-        speaker = line.trim();
-        linesSkipped = 1;
-        break;
+      if (iCri === -1 && (line.includes('NOSSA VIDA CRISTA') || line.includes('NOSSA VIDA CRISTÃ'))) {
+        iCri = i;
       }
     }
+    
+    const L = lines.length;
+    const blocks = {};
+    
+    if (iTes !== -1) {
+      blocks['TESOUROS'] = lines.slice(iTes, (iMin !== -1 ? iMin : (iCri !== -1 ? iCri : L)));
+    }
+    if (iMin !== -1) {
+      blocks['MINISTERIO'] = lines.slice(iMin, (iCri !== -1 ? iCri : L));
+    }
+    if (iCri !== -1) {
+      blocks['CRISTA'] = lines.slice(iCri);
+    }
+    
+    // Se nenhum bloco foi encontrado, tentar detectar partes soltas
+    if (Object.keys(blocks).length === 0) {
+      console.log('⚠️ Nenhum bloco encontrado, tentando detectar partes soltas...');
+      // Verificar se há partes numeradas
+      const hasParts = lines.some(l => /^\s*\d+\./.test(l));
+      if (hasParts) {
+        blocks['TESOUROS'] = lines;
+      }
+    }
+    
+    return blocks;
+  }
 
-    return { speaker, assistant, linesSkipped };
+  /**
+   * Extrair partes de um bloco (igual ao PHP)
+   */
+  extractPartsFromBlock(lines, sectionName) {
+    const parts = [];
+    let ordem = 1;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      
+      // Padrão: "1. Nome da parte (10 min)"
+      const match = trimmed.match(/^\s*(\d+)\.\s+(.+?)\s*\((\d{1,2})\s*min\)/i);
+      if (match) {
+        parts.push({
+          secao: sectionName,
+          ordem: ordem++,
+          numero: parseInt(match[1]),
+          tema: match[2].trim(),
+          minutos: parseInt(match[3])
+        });
+      }
+    }
+    
+    return parts;
+  }
+
+  /**
+   * Extrair partes soltas (fallback)
+   */
+  extractLooseParts(text) {
+    const lines = text.split('\n').map(l => l.trim());
+    const parts = [];
+    let ordem = 1;
+    
+    for (const line of lines) {
+      if (!line) continue;
+      
+      // Tentar diferentes padrões
+      let match = line.match(/^\s*(\d+)\.\s+(.+?)\s*\((\d{1,2})\s*min\)/i);
+      if (match) {
+        parts.push({
+          secao: 'TESOUROS',
+          ordem: ordem++,
+          numero: parseInt(match[1]),
+          tema: match[2].trim(),
+          minutos: parseInt(match[3])
+        });
+        continue;
+      }
+      
+      // Tentar sem minutos
+      match = line.match(/^\s*(\d+)\.\s+(.+?)$/i);
+      if (match && !match[1].match(/^\d+$/)) {
+        parts.push({
+          secao: 'TESOUROS',
+          ordem: ordem++,
+          numero: parseInt(match[1]),
+          tema: match[2].trim(),
+          minutos: null
+        });
+      }
+    }
+    
+    return parts;
+  }
+
+  /**
+   * Remover acentos (igual ao PHP)
+   */
+  removeAccents(str) {
+    const accents = {
+      'Á': 'A', 'À': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A',
+      'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+      'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+      'Ó': 'O', 'Ò': 'O', 'Ô': 'O', 'Õ': 'O', 'Ö': 'O',
+      'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+      'Ç': 'C',
+      'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a',
+      'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+      'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+      'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+      'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+      'ç': 'c'
+    };
+    return str.replace(/[ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇáàâãäéèêëíìîïóòôõöúùûüç]/g, 
+      match => accents[match] || match);
+  }
+
+  /**
+   * Obter nome da seção para exibição
+   */
+  getSectionDisplayName(sectionKey) {
+    const map = {
+      'TESOUROS': 'Tesouros da Palavra de Deus',
+      'MINISTERIO': 'Faça seu melhor no ministério',
+      'CRISTA': 'Nossa vida cristã'
+    };
+    return map[sectionKey] || sectionKey;
   }
 }
 
