@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ClipboardList, 
   Calendar, 
@@ -22,9 +22,20 @@ import {
   CheckCircle,
   XCircle,
   X,
-  Save
+  Save,
+  UserPlus,
+  UserCheck
 } from 'lucide-react';
 import api from '../services/api';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  congregation: string;
+  gender: 'male' | 'female';
+  privileges: string[];
+}
 
 interface Designation {
   id: number;
@@ -34,15 +45,36 @@ interface Designation {
   partNumber: string;
   partName: string;
   speaker: string;
+  speakerId?: number;
   assistant?: string;
+  assistantId?: number;
   time?: string;
   song?: string;
   order: number;
   notes?: string;
 }
 
+interface UserFormData {
+  name: string;
+  email: string;
+  password?: string;
+  confirmPassword?: string;
+  congregation: string;
+  phone?: string;
+  cellphone?: string;
+  address?: string;
+  birthDate?: string;
+  baptismDate?: string;
+  class?: string;
+  gender: 'male' | 'female';
+  accessLevel: 'viewer' | 'support' | 'admin';
+  privileges: string[];
+  isActive: boolean;
+}
+
 const Designations: React.FC = () => {
   const [designations, setDesignations] = useState<Designation[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [uploading, setUploading] = useState(false);
@@ -51,23 +83,35 @@ const Designations: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Designation>>({});
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [selectedField, setSelectedField] = useState<'speaker' | 'assistant'>('speaker');
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+    }
+  };
 
   const fetchDesignations = async () => {
     try {
       setLoading(true);
       const response = await api.get(`/designations/by-date/${selectedDate}`);
-// O backend retorna um objeto com { designs: [], grouped: {}, total: 0 }
-// Extrair o array de designações
-const data = response.data;
-if (data && Array.isArray(data.designs)) {
-  setDesignations(data.designs);
-} else if (Array.isArray(data)) {
-  setDesignations(data);
-} else {
-  setDesignations([]);
-}
+      const data = response.data;
+      
+      if (data && data.designs && Array.isArray(data.designs)) {
+        setDesignations(data.designs);
+      } else if (Array.isArray(data)) {
+        setDesignations(data);
+      } else {
+        setDesignations([]);
+      }
     } catch (error) {
       console.error('Erro ao buscar designações:', error);
+      setDesignations([]);
     } finally {
       setLoading(false);
     }
@@ -75,6 +119,7 @@ if (data && Array.isArray(data.designs)) {
 
   useEffect(() => {
     fetchDesignations();
+    fetchUsers();
   }, [selectedDate]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,6 +180,21 @@ if (data && Array.isArray(data.designs)) {
     }
   };
 
+  const openUserModal = (field: 'speaker' | 'assistant') => {
+    setSelectedField(field);
+    setUserSearch('');
+    setIsUserModalOpen(true);
+  };
+
+  const selectUser = (user: User) => {
+    if (selectedField === 'speaker') {
+      setFormData({ ...formData, speaker: user.name, speakerId: user.id });
+    } else {
+      setFormData({ ...formData, assistant: user.name, assistantId: user.id });
+    }
+    setIsUserModalOpen(false);
+  };
+
   const getSectionIcon = (section: string) => {
     const map: Record<string, string> = {
       'Tesouros da Palavra de Deus': '📖',
@@ -153,13 +213,20 @@ if (data && Array.isArray(data.designs)) {
     return map[section] || 'border-gray-200';
   };
 
+  const filteredUsers = useMemo(() => {
+    if (!userSearch) return users;
+    return users.filter(u => 
+      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearch.toLowerCase())
+    );
+  }, [users, userSearch]);
+
   const groupedDesignations = designations.reduce((acc, d) => {
     if (!acc[d.section]) acc[d.section] = [];
     acc[d.section].push(d);
     return acc;
   }, {} as Record<string, Designation[]>);
 
-  // Extrair data para exibição
   const displayDate = new Date(selectedDate);
   const formattedDate = displayDate.toLocaleDateString('pt-BR', { 
     day: 'numeric', 
@@ -227,7 +294,7 @@ if (data && Array.isArray(data.designs)) {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Data do programa */}
+          {/* Data */}
           <div className="text-center">
             <h2 className="text-xl font-bold text-[var(--text-primary)]">
               {formattedDate}
@@ -273,11 +340,17 @@ if (data && Array.isArray(data.designs)) {
                         <span className="flex items-center gap-1 text-[var(--text-secondary)]">
                           <User className="w-3 h-3" />
                           {part.speaker || 'Não designado'}
+                          {part.speakerId && (
+                            <span className="text-xs text-[var(--text-muted)]">(ID: {part.speakerId})</span>
+                          )}
                         </span>
                         {part.assistant && (
                           <span className="flex items-center gap-1 text-[var(--text-secondary)]">
                             <Users className="w-3 h-3" />
                             Ajudante: {part.assistant}
+                            {part.assistantId && (
+                              <span className="text-xs text-[var(--text-muted)]">(ID: {part.assistantId})</span>
+                            )}
                           </span>
                         )}
                       </div>
@@ -286,12 +359,14 @@ if (data && Array.isArray(data.designs)) {
                       <button 
                         className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
                         onClick={() => openEditModal(part)}
+                        title="Editar designação"
                       >
                         <Edit className="w-4 h-4 text-[var(--text-muted)]" />
                       </button>
                       <button 
                         className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                         onClick={() => handleDelete(part.id)}
+                        title="Excluir"
                       >
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </button>
@@ -304,7 +379,7 @@ if (data && Array.isArray(data.designs)) {
         </div>
       )}
 
-      {/* Modal de Edição */}
+      {/* Modal de Edição com Designação */}
       {isModalOpen && editingDesignation && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
@@ -345,26 +420,46 @@ if (data && Array.isArray(data.designs)) {
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                   Designado
                 </label>
-                <input
-                  type="text"
-                  value={formData.speaker || ''}
-                  onChange={(e) => setFormData({ ...formData, speaker: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                  placeholder="Nome do irmão/irmã"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.speaker || ''}
+                    onChange={(e) => setFormData({ ...formData, speaker: e.target.value, speakerId: undefined })}
+                    className="flex-1 px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                    placeholder="Nome do irmão/irmã"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openUserModal('speaker')}
+                    className="px-3 py-2 bg-[#1a3c6e] text-white rounded-xl hover:bg-[#153058] transition flex items-center gap-1"
+                    title="Selecionar da lista"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                   Ajudante (opcional)
                 </label>
-                <input
-                  type="text"
-                  value={formData.assistant || ''}
-                  onChange={(e) => setFormData({ ...formData, assistant: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
-                  placeholder="Nome do ajudante"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={formData.assistant || ''}
+                    onChange={(e) => setFormData({ ...formData, assistant: e.target.value, assistantId: undefined })}
+                    className="flex-1 px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                    placeholder="Nome do ajudante"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openUserModal('assistant')}
+                    className="px-3 py-2 bg-[#1a3c6e] text-white rounded-xl hover:bg-[#153058] transition flex items-center gap-1"
+                    title="Selecionar da lista"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -422,6 +517,65 @@ if (data && Array.isArray(data.designs)) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Seleção de Usuário */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-[#1a3c6e]" />
+                Selecionar {selectedField === 'speaker' ? 'Designado' : 'Ajudante'}
+              </h2>
+              <button
+                onClick={() => setIsUserModalOpen(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+              <input
+                type="text"
+                placeholder="Buscar por nome..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+              />
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto space-y-1">
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-4 text-[var(--text-muted)]">
+                  Nenhum usuário encontrado
+                </div>
+              ) : (
+                filteredUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => selectUser(user)}
+                    className="w-full text-left px-4 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition flex items-center gap-2"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${user.gender === 'male' ? 'bg-blue-500' : 'bg-pink-500'}`}>
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-medium text-[var(--text-primary)]">{user.name}</div>
+                      <div className="text-xs text-[var(--text-muted)]">{user.email}</div>
+                    </div>
+                    <div className="ml-auto text-xs text-[var(--text-muted)]">
+                      {user.privileges.includes('elder') && '👑 '}
+                      {user.privileges.includes('ministerial') && '⚜️ '}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
