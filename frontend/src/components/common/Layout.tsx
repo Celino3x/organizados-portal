@@ -1,11 +1,11 @@
-﻿import React, { ReactNode, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+﻿import React, { ReactNode, useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import {
   LayoutDashboard,
   MapPin,
-  Calendar,
+  ClipboardList,
   Users,
   BookOpen,
   LogOut,
@@ -13,7 +13,6 @@ import {
   X,
   Sun,
   Moon,
-  Menu as MenuIcon,
   BarChart3,
 } from 'lucide-react';
 
@@ -25,8 +24,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const { toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -34,13 +51,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: MapPin, label: 'Territórios', path: '/territories' },
-    { icon: Calendar, label: 'Designações', path: '/designations' },
+    { icon: ClipboardList, label: 'Designações', path: '/designations' },
     { icon: Users, label: 'Congregação', path: '/congregation' },
     { icon: BarChart3, label: 'Relatórios', path: '/reports' },
-    { icon: BookOpen, label: 'Publicações', path: '/publications' },
   ];
+
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
 
   return (
     <div className="min-h-screen bg-[rgb(var(--background))] text-[rgb(var(--foreground))] flex transition-colors duration-300">
@@ -53,29 +73,36 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           {sidebarOpen && (
             <div>
-              <h1 className="text-lg font-bold text-[rgb(var(--foreground))]">Organizados</h1>
-              <p className="text-xs text-[rgb(var(--foreground))] opacity-60">Portal da Congregação</p>
+              <h1 className="text-lg font-bold text-[rgb(var(--foreground))]">Portal</h1>
+              <p className="text-xs text-[rgb(var(--foreground))] opacity-60">Organizados</p>
             </div>
           )}
         </div>
 
         {/* Menu */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className="flex items-center gap-3 px-4 py-3 text-[rgb(var(--foreground))] opacity-80 hover:opacity-100 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all group"
-            >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
-              {!sidebarOpen && (
-                <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                  {item.label}
-                </span>
-              )}
-            </Link>
-          ))}
+          {menuItems.map((item) => {
+            const active = isActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all group ${
+                  active
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'text-[rgb(var(--foreground))] opacity-80 hover:opacity-100 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400'
+                }`}
+              >
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                {!sidebarOpen && (
+                  <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    {item.label}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Footer */}
@@ -85,7 +112,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             className="w-full flex items-center gap-3 px-4 py-2 text-[rgb(var(--foreground))] opacity-80 hover:opacity-100 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all"
           >
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            {sidebarOpen && <span className="text-sm font-medium">{isDark ? '☀️ Tema Claro' : '🌙 Tema Escuro'}</span>}
+            {sidebarOpen && <span className="text-sm font-medium">{isDark ? '☀️ Claro' : '🌙 Escuro'}</span>}
           </button>
 
           <div className="flex items-center gap-3 pt-2 border-t border-[rgb(var(--border))]">
@@ -95,7 +122,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[rgb(var(--foreground))] truncate">{user?.name}</p>
-                <p className="text-xs text-[rgb(var(--foreground))] opacity-60 truncate capitalize">{user?.role}</p>
+                <p className="text-xs text-[rgb(var(--foreground))] opacity-60 truncate capitalize">
+                  {user?.accessLevel === 'admin' ? 'Administrador' : 
+                   user?.accessLevel === 'support' ? 'Apoio' : 
+                   'Visualizador'}
+                </p>
               </div>
             )}
             <button
@@ -113,13 +144,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[rgb(var(--card))] border-b border-[rgb(var(--border))] p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-[rgb(var(--foreground))]">
-            <MenuIcon className="w-6 h-6" />
+            <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
               <span className="text-white text-sm font-bold">📖</span>
             </div>
-            <h1 className="text-lg font-bold text-[rgb(var(--foreground))]">Organizados</h1>
+            <h1 className="text-lg font-bold text-[rgb(var(--foreground))]">Portal</h1>
           </div>
         </div>
         <button onClick={toggleTheme} className="p-2 text-[rgb(var(--foreground))]">
@@ -137,8 +168,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <span className="text-white text-lg font-bold">📖</span>
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-[rgb(var(--foreground))]">Organizados</h1>
-                  <p className="text-xs text-[rgb(var(--foreground))] opacity-60">Portal da Congregação</p>
+                  <h1 className="text-lg font-bold text-[rgb(var(--foreground))]">Portal</h1>
+                  <p className="text-xs text-[rgb(var(--foreground))] opacity-60">Organizados</p>
                 </div>
               </div>
               <button onClick={() => setMobileMenuOpen(false)} className="text-[rgb(var(--foreground))]">
@@ -151,7 +182,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-[rgb(var(--foreground))] opacity-80 hover:opacity-100 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                    isActive(item.path)
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      : 'text-[rgb(var(--foreground))] opacity-80 hover:opacity-100 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                  }`}
                 >
                   <item.icon className="w-5 h-5" />
                   <span className="text-sm font-medium">{item.label}</span>
@@ -164,7 +199,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-[rgb(var(--foreground))]">{user?.name}</p>
-                    <p className="text-xs text-[rgb(var(--foreground))] opacity-60 capitalize">{user?.role}</p>
+                    <p className="text-xs text-[rgb(var(--foreground))] opacity-60 capitalize">
+                      {user?.accessLevel === 'admin' ? 'Administrador' : 
+                       user?.accessLevel === 'support' ? 'Apoio' : 
+                       'Visualizador'}
+                    </p>
                   </div>
                 </div>
                 <button
@@ -182,7 +221,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Conteúdo Principal */}
       <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'} md:mt-0 mt-16`}>
-        <div className="p-4 md:p-8">
+        <div className="container-custom p-4 md:p-8">
           {children}
         </div>
       </main>
