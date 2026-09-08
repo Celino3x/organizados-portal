@@ -35,6 +35,7 @@ import {
   BookOpen,
   Clock,
   Briefcase
+  // Info REMOVIDO
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -595,7 +596,7 @@ const Congregation: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Criação/Edição com ícones padronizados */}
+      {/* Modal de Criação/Edição - SEM o ícone Info */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
@@ -837,10 +838,7 @@ const Congregation: React.FC = () => {
                     className="w-full px-4 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
                   >
                     {accessLevels.map(level => (
-                      <option key={level.value} value={level.value}>
-                        {level.icon && <level.icon className="w-4 h-4 inline" />}
-                        {level.label}
-                      </option>
+                      <option key={level.value} value={level.value}>{level.label}</option>
                     ))}
                   </select>
                 </div>
@@ -868,7 +866,7 @@ const Congregation: React.FC = () => {
                       placeholder={editingUser ? 'Digite a nova senha' : 'Digite a senha'}
                     />
                     <p className="text-xs text-[var(--text-muted)] mt-1 flex items-center gap-1">
-                      <Info className="w-3 h-3" />
+                      <AlertCircle className="w-3 h-3" />
                       {editingUser ? 'Deixe em branco para manter a atual' : 'Mínimo 6 caracteres'}
                     </p>
                   </div>
