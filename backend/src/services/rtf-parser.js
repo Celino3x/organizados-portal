@@ -2,7 +2,6 @@
 
 class RTFParser {
   constructor() {
-    // Mesmo padrão do PHP
     this.sectionPatterns = [
       { 
         patterns: ['TESOUROS DA PALAVRA DE DEUS', 'TESOUROS'],
@@ -26,63 +25,82 @@ class RTFParser {
   }
 
   /**
-   * Parse o conteúdo RTF - similar ao PHP
+   * Parse o conteúdo RTF
    */
   parseRTF(rtfContent) {
-    // 1. Converter RTF para texto (igual ao PHP)
     const text = this.rtfToText(rtfContent);
     
     console.log('📄 === INÍCIO PARSE RTF ===');
     console.log(`📄 Tamanho do texto: ${text.length} caracteres`);
-    console.log('📄 Primeiros 500 caracteres:');
-    console.log(text.substring(0, 500));
+    console.log('📄 Primeiros 1000 caracteres:');
+    console.log(text.substring(0, 1000));
+    console.log('📄 Últimos 500 caracteres:');
+    console.log(text.substring(Math.max(0, text.length - 500)));
     
-    // 2. Extrair dados como o PHP faz
-    const result = {
-      date: this.extractSemanaTextual(text),
-      meetingType: 'midweek',
-      sections: [],
-      songs: this.extractCanticos(text)
-    };
+    // Extrair data (como string)
+    const dateString = this.extractSemanaTextual(text);
+    console.log(`📅 Semana textual encontrada: "${dateString}"`);
     
-    console.log(`📅 Semana textual: ${result.date}`);
-    console.log(`🎵 Cânticos: abertura=${result.songs.abertura}, meio=${result.songs.meio}, final=${result.songs.final}`);
+    // Converter para objeto Date
+    let dateObj = null;
+    if (dateString) {
+      dateObj = this.parseDateString(dateString);
+      console.log(`📅 Data convertida: ${dateObj ? dateObj.toISOString() : 'null'}`);
+    }
+    
+    if (!dateObj) {
+      // Tentar encontrar data no formato "28 DE SETEMBRO - 4 DE OUTUBRO" de forma mais flexível
+      console.log('⚠️ Tentando encontrar data com padrão alternativo...');
+      const altDate = this.extractDateAlternative(text);
+      if (altDate) {
+        dateObj = altDate;
+        console.log(`📅 Data alternativa encontrada: ${dateObj.toISOString()}`);
+      }
+    }
+    
+    if (!dateObj) {
+      dateObj = new Date();
+      console.log('⚠️ Nenhuma data encontrada, usando data atual');
+    }
+    console.log(`📅 Data final: ${dateObj.toISOString()}`);
 
-    // 3. Detectar blocos (igual ao PHP)
+    // Extrair cânticos
+    const songs = this.extractCanticos(text);
+    console.log(`🎵 Cânticos: abertura=${songs.abertura}, meio=${songs.meio}, final=${songs.final}`);
+
+    // Detectar blocos
     const blocks = this.detectBlocks(text);
+    console.log(`📂 Blocos encontrados: ${Object.keys(blocks).join(', ')}`);
     
-    // 4. Extrair partes de cada bloco
-    const allParts = [];
+    // Extrair partes
+    const sections = [];
     for (const [sectionName, blockLines] of Object.entries(blocks)) {
       const parts = this.extractPartsFromBlock(blockLines, sectionName);
-      allParts.push(...parts);
-      
       if (parts.length > 0) {
         console.log(`📂 Seção ${sectionName}: ${parts.length} partes encontradas`);
-        // Adicionar seção ao resultado
         const section = {
           name: this.getSectionDisplayName(sectionName),
           parts: parts.map(p => ({
             number: p.numero.toString(),
             name: p.tema,
             time: p.minutos ? `${p.minutos} min` : null,
-            speaker: null, // Será preenchido depois se disponível
+            speaker: null,
             assistant: null
           })),
-          song: sectionName === 'CRISTA' ? result.songs.final : 
-                sectionName === 'MINISTERIO' ? result.songs.meio : 
-                result.songs.abertura
+          song: sectionName === 'CRISTA' ? songs.final : 
+                sectionName === 'MINISTERIO' ? songs.meio : 
+                songs.abertura
         };
-        result.sections.push(section);
+        sections.push(section);
       }
     }
-    
-    // 5. Se não encontrou seções, tentar detectar partes soltas
-    if (result.sections.length === 0) {
+
+    // Fallback: partes soltas
+    if (sections.length === 0) {
       console.log('⚠️ Nenhuma seção encontrada, tentando detectar partes soltas...');
       const looseParts = this.extractLooseParts(text);
       if (looseParts.length > 0) {
-        result.sections.push({
+        sections.push({
           name: 'Tesouros da Palavra de Deus',
           parts: looseParts.map(p => ({
             number: p.numero.toString(),
@@ -91,85 +109,181 @@ class RTFParser {
             speaker: null,
             assistant: null
           })),
-          song: result.songs.abertura
+          song: songs.abertura
         });
         console.log(`📌 ${looseParts.length} partes soltas encontradas`);
       }
     }
 
-    // 6. Se ainda não encontrou data, usar a data atual
-    if (!result.date) {
-      const now = new Date();
-      result.date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      console.log('⚠️ Nenhuma data encontrada, usando data atual');
-    }
-
     console.log('📊 === RESUMO ===');
-    console.log(`  📅 Data: ${result.date}`);
-    console.log(`  📂 Seções: ${result.sections.length}`);
-    result.sections.forEach(s => {
+    console.log(`  📅 Data: ${dateObj.toISOString()}`);
+    console.log(`  📂 Seções: ${sections.length}`);
+    sections.forEach(s => {
       console.log(`    - ${s.name}: ${s.parts.length} partes`);
     });
 
-    return result;
+    return {
+      date: dateObj,
+      meetingType: 'midweek',
+      sections: sections,
+      songs: songs
+    };
   }
 
   /**
-   * Converter RTF para texto (igual ao PHP)
+   * Converter RTF para texto
    */
   rtfToText(rtf) {
     let s = rtf;
-    
-    // Converter \par para quebras de linha
     s = s.replace(/\\par[d]?/gi, '\n');
-    
-    // Converter caracteres Unicode (\uXXXX)
     s = s.replace(/\\u(-?\d+)\??/g, (match, code) => {
       const num = parseInt(code);
       return String.fromCharCode(num < 0 ? num + 65536 : num);
     });
-    
-    // Converter caracteres acentuados (\'XX)
     s = s.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => {
-      return Buffer.from(hex, 'hex').toString('latin1');
+      try {
+        return Buffer.from(hex, 'hex').toString('latin1');
+      } catch {
+        return '';
+      }
     });
-    
-    // Remover comandos RTF
     s = s.replace(/\\[a-zA-Z]+-?\d*/g, '');
-    
-    // Remover chaves
     s = s.replace(/[{}]/g, '');
-    
-    // Remover espaços excessivos
     s = s.replace(/[ \t]+\n/g, '\n');
     s = s.replace(/\n{3,}/g, '\n\n');
-    
     return s.trim();
   }
 
   /**
-   * Extrair semana textual (igual ao PHP)
+   * Extrair semana textual
    */
   extractSemanaTextual(text) {
     const normalized = text.replace(/\s+/g, ' ');
     
-    // Padrão: "28 DE SETEMBRO - 4 DE OUTUBRO"
+    console.log('🔍 Procurando data com padrão 1: /(\\d{1,2})\\s*(?:a|–|-)\\s*(\\d{1,2})\\s+de\\s+([a-zçãéíóú]+)/i');
     const match1 = normalized.match(/(\d{1,2})\s*(?:a|–|-)\s*(\d{1,2})\s+de\s+([a-zçãéíóú]+)/i);
     if (match1) {
+      console.log(`✅ Padrão 1 encontrado: ${match1[1]}–${match1[2]} DE ${match1[3].toUpperCase()}`);
       return `${match1[1]}–${match1[2]} DE ${match1[3].toUpperCase()}`;
     }
     
-    // Padrão: "28 DE SETEMBRO–4 DE OUTUBRO"
+    console.log('🔍 Procurando data com padrão 2: /(\\d{1,2})\\s+de\\s+([a-zçãéíóú]+)\\s*(?:–|-)\\s*(\\d{1,2})\\s+de\\s+([a-zçãéíóú]+)/i');
     const match2 = normalized.match(/(\d{1,2})\s+de\s+([a-zçãéíóú]+)\s*(?:–|-)\s*(\d{1,2})\s+de\s+([a-zçãéíóú]+)/i);
     if (match2) {
+      console.log(`✅ Padrão 2 encontrado: ${match2[1]} DE ${match2[2].toUpperCase()}–${match2[3]} DE ${match2[4].toUpperCase()}`);
       return `${match2[1]} DE ${match2[2].toUpperCase()}–${match2[3]} DE ${match2[4].toUpperCase()}`;
+    }
+    
+    console.log('❌ Nenhum padrão de data encontrado');
+    return null;
+  }
+
+  /**
+   * Extrair data alternativa - mais flexível
+   */
+  extractDateAlternative(text) {
+    // Procurar por padrões de data mais flexíveis
+    const patterns = [
+      // "28 DE SETEMBRO"
+      /(\d{1,2})\s+DE\s+([A-ZÇÃÉÍÓÚ]{3,})/i,
+      // "SETEMBRO 28"
+      /([A-ZÇÃÉÍÓÚ]{3,})\s+(\d{1,2})/i,
+      // "28/09" ou "28-09"
+      /(\d{1,2})[\/\-](\d{1,2})/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        console.log(`✅ Padrão alternativo encontrado: ${match[0]}`);
+        if (pattern === patterns[0]) {
+          const day = parseInt(match[1]);
+          const monthName = match[2].toUpperCase();
+          const month = this.months[monthName];
+          if (month) {
+            const year = new Date().getFullYear();
+            const date = new Date(year, month - 1, day);
+            if (date > new Date()) {
+              date.setFullYear(year - 1);
+            }
+            return date;
+          }
+        } else if (pattern === patterns[1]) {
+          const monthName = match[1].toUpperCase();
+          const day = parseInt(match[2]);
+          const month = this.months[monthName];
+          if (month) {
+            const year = new Date().getFullYear();
+            const date = new Date(year, month - 1, day);
+            if (date > new Date()) {
+              date.setFullYear(year - 1);
+            }
+            return date;
+          }
+        } else if (pattern === patterns[2]) {
+          const day = parseInt(match[1]);
+          const month = parseInt(match[2]);
+          if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+            const year = new Date().getFullYear();
+            const date = new Date(year, month - 1, day);
+            if (date > new Date()) {
+              date.setFullYear(year - 1);
+            }
+            return date;
+          }
+        }
+      }
     }
     
     return null;
   }
 
   /**
-   * Extrair cânticos (igual ao PHP)
+   * Converter string de data para objeto Date
+   */
+  parseDateString(dateStr) {
+    console.log(`🔍 Parseando data: "${dateStr}"`);
+    
+    // Exemplo: "28–29 DE SETEMBRO"
+    const match1 = dateStr.match(/(\d{1,2})[–\-](\d{1,2})\s+DE\s+([A-ZÇÃÉÍÓÚ]+)/i);
+    if (match1) {
+      const day = parseInt(match1[1]);
+      const monthName = match1[3].toUpperCase();
+      const month = this.months[monthName];
+      if (month) {
+        const year = new Date().getFullYear();
+        const date = new Date(year, month - 1, day);
+        if (date > new Date()) {
+          date.setFullYear(year - 1);
+        }
+        console.log(`✅ Data parseada: ${date.toISOString()}`);
+        return date;
+      }
+    }
+    
+    // Exemplo: "28 DE SETEMBRO–4 DE OUTUBRO"
+    const match2 = dateStr.match(/(\d{1,2})\s+DE\s+([A-ZÇÃÉÍÓÚ]+)/i);
+    if (match2) {
+      const day = parseInt(match2[1]);
+      const monthName = match2[2].toUpperCase();
+      const month = this.months[monthName];
+      if (month) {
+        const year = new Date().getFullYear();
+        const date = new Date(year, month - 1, day);
+        if (date > new Date()) {
+          date.setFullYear(year - 1);
+        }
+        console.log(`✅ Data parseada: ${date.toISOString()}`);
+        return date;
+      }
+    }
+    
+    console.log('❌ Falha ao parsear data');
+    return null;
+  }
+
+  /**
+   * Extrair cânticos
    */
   extractCanticos(text) {
     const matches = text.match(/C[âa]ntico\s*(\d{1,3})/gi);
@@ -180,7 +294,6 @@ class RTFParser {
         if (num) numbers.push(parseInt(num[0]));
       }
     }
-    
     return {
       abertura: numbers[0] || null,
       meio: numbers[1] || null,
@@ -189,7 +302,7 @@ class RTFParser {
   }
 
   /**
-   * Detectar blocos (igual ao PHP)
+   * Detectar blocos
    */
   detectBlocks(text) {
     const lines = text.split('\n').map(l => l.trim());
@@ -223,10 +336,7 @@ class RTFParser {
       blocks['CRISTA'] = lines.slice(iCri);
     }
     
-    // Se nenhum bloco foi encontrado, tentar detectar partes soltas
     if (Object.keys(blocks).length === 0) {
-      console.log('⚠️ Nenhum bloco encontrado, tentando detectar partes soltas...');
-      // Verificar se há partes numeradas
       const hasParts = lines.some(l => /^\s*\d+\./.test(l));
       if (hasParts) {
         blocks['TESOUROS'] = lines;
@@ -237,7 +347,7 @@ class RTFParser {
   }
 
   /**
-   * Extrair partes de um bloco (igual ao PHP)
+   * Extrair partes de um bloco
    */
   extractPartsFromBlock(lines, sectionName) {
     const parts = [];
@@ -247,7 +357,6 @@ class RTFParser {
       const trimmed = line.trim();
       if (!trimmed) continue;
       
-      // Padrão: "1. Nome da parte (10 min)"
       const match = trimmed.match(/^\s*(\d+)\.\s+(.+?)\s*\((\d{1,2})\s*min\)/i);
       if (match) {
         parts.push({
@@ -264,7 +373,7 @@ class RTFParser {
   }
 
   /**
-   * Extrair partes soltas (fallback)
+   * Extrair partes soltas
    */
   extractLooseParts(text) {
     const lines = text.split('\n').map(l => l.trim());
@@ -274,7 +383,6 @@ class RTFParser {
     for (const line of lines) {
       if (!line) continue;
       
-      // Tentar diferentes padrões
       let match = line.match(/^\s*(\d+)\.\s+(.+?)\s*\((\d{1,2})\s*min\)/i);
       if (match) {
         parts.push({
@@ -287,7 +395,6 @@ class RTFParser {
         continue;
       }
       
-      // Tentar sem minutos
       match = line.match(/^\s*(\d+)\.\s+(.+?)$/i);
       if (match && !match[1].match(/^\d+$/)) {
         parts.push({
@@ -304,7 +411,7 @@ class RTFParser {
   }
 
   /**
-   * Remover acentos (igual ao PHP)
+   * Remover acentos
    */
   removeAccents(str) {
     const accents = {
@@ -326,7 +433,7 @@ class RTFParser {
   }
 
   /**
-   * Obter nome da seção para exibição
+   * Obter nome da seção
    */
   getSectionDisplayName(sectionKey) {
     const map = {
