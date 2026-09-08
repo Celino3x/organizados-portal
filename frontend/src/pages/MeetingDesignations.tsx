@@ -26,7 +26,10 @@ import {
   BookOpen,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ClipboardList,
+  MessageSquare,
+  Heart
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -61,8 +64,12 @@ const MeetingDesignations: React.FC = () => {
   const [selectedMeetings, setSelectedMeetings] = useState<number[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<number | null>(null);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignLoading, setAssignLoading] = useState(false);
 
-  // Anos disponíveis (últimos 5 + próximo 2)
+  // Anos disponíveis
   const currentYear = new Date().getFullYear();
   const availableYears = Array.from({ length: 8 }, (_, i) => currentYear - 3 + i);
   
@@ -138,6 +145,41 @@ const MeetingDesignations: React.FC = () => {
     }
   };
 
+  const handleAssign = async (meetingId: number) => {
+    setSelectedMeetingId(meetingId);
+    setShowAssignModal(true);
+    // Buscar designações da reunião
+    try {
+      const response = await api.get(`/designations/meeting/${meetingId}/designations`);
+      setAssignments(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar designações:', error);
+      setAssignments([]);
+    }
+  };
+
+  const handleSaveAssignments = async () => {
+    setAssignLoading(true);
+    try {
+      await api.put(`/designations/meeting/${selectedMeetingId}/assign`, {
+        assignments: assignments
+      });
+      alert('✅ Designações salvas com sucesso!');
+      setShowAssignModal(false);
+      fetchMeetings();
+    } catch (error) {
+      alert('❌ Erro ao salvar designações');
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  const updateAssignment = (index: number, field: string, value: any) => {
+    const updated = [...assignments];
+    updated[index] = { ...updated[index], [field]: value };
+    setAssignments(updated);
+  };
+
   const toggleSelectAll = () => {
     if (selectedMeetings.length === meetings.length) {
       setSelectedMeetings([]);
@@ -178,10 +220,9 @@ const MeetingDesignations: React.FC = () => {
     return new Date(dateStr).getFullYear();
   };
 
-  // Tabs do submenu
   const tabs = [
-    { path: '/designations/meetings', label: '📋 Reunião Vida e Ministério' },
-    { path: '/designations', label: '📌 Todas as Designações' },
+    { path: '/designations/meetings', label: 'Reunião Vida e Ministério', icon: Calendar },
+    { path: '/designations', label: 'Todas as Designações', icon: ClipboardList },
   ];
 
   return (
@@ -190,16 +231,18 @@ const MeetingDesignations: React.FC = () => {
       <div className="flex flex-wrap gap-2 mb-6 border-b border-[var(--border-color)] pb-3">
         {tabs.map((tab) => {
           const isActive = window.location.pathname === tab.path;
+          const Icon = tab.icon;
           return (
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
-              className={`px-4 py-2 rounded-lg font-medium transition text-sm md:text-base ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition text-sm md:text-base ${
                 isActive
                   ? 'bg-[#1a3c6e] text-white'
                   : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
               }`}
             >
+              <Icon className="w-4 h-4" />
               {tab.label}
             </button>
           );
@@ -304,7 +347,6 @@ const MeetingDesignations: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* Controles de seleção */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-3">
               <button
@@ -328,7 +370,6 @@ const MeetingDesignations: React.FC = () => {
             </div>
           </div>
 
-          {/* Lista de reuniões */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {meetings.map((meeting) => (
               <div
@@ -356,6 +397,13 @@ const MeetingDesignations: React.FC = () => {
                           onClick={() => navigate(`/designations/meeting/${meeting.id}`)}
                         >
                           <Eye className="w-4 h-4 text-[var(--text-muted)]" />
+                        </button>
+                        <button
+                          className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
+                          title="Designar Publicadores"
+                          onClick={() => handleAssign(meeting.id)}
+                        >
+                          <Users className="w-4 h-4 text-blue-500" />
                         </button>
                         <button
                           className="p-1.5 hover:bg-[var(--bg-hover)] rounded-lg transition"
@@ -408,7 +456,6 @@ const MeetingDesignations: React.FC = () => {
             ))}
           </div>
 
-          {/* Resumo */}
           <div className="mt-4 text-sm text-[var(--text-muted)] text-center">
             Mostrando <strong>{meetings.length}</strong> reuniões
           </div>
@@ -462,6 +509,106 @@ const MeetingDesignations: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Designação de Publicadores */}
+      {showAssignModal && selectedMeetingId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <Users className="w-6 h-6 text-[#1a3c6e]" />
+                Designar Publicadores
+              </h2>
+              <button
+                onClick={() => setShowAssignModal(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              Associe cada parte da reunião a um publicador. Partes do ministério podem ter ajudante.
+            </p>
+
+            {assignments.length === 0 ? (
+              <div className="text-center py-8 text-[var(--text-muted)]">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Nenhuma parte encontrada para esta reunião</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {assignments.map((assignment, index) => (
+                  <div key={index} className="card p-4 border border-[var(--border-color)]">
+                    <div className="flex flex-wrap items-start gap-4">
+                      <div className="flex-1 min-w-[150px]">
+                        <div className="font-medium text-[var(--text-primary)]">
+                          {assignment.partNumber}. {assignment.partName}
+                        </div>
+                        <div className="text-sm text-[var(--text-muted)]">
+                          {assignment.section} • {assignment.time || 'Sem tempo'}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                          Designado
+                        </label>
+                        <input
+                          type="text"
+                          value={assignment.speaker || ''}
+                          onChange={(e) => updateAssignment(index, 'speaker', e.target.value)}
+                          placeholder="Nome do irmão/irmã"
+                          className="w-full px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                        />
+                      </div>
+                      {(assignment.section === 'Faça seu melhor no ministério' || assignment.assistant !== undefined) && (
+                        <div className="flex-1 min-w-[120px]">
+                          <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                            Ajudante
+                          </label>
+                          <input
+                            type="text"
+                            value={assignment.assistant || ''}
+                            onChange={(e) => updateAssignment(index, 'assistant', e.target.value)}
+                            placeholder="Nome do ajudante"
+                            className="w-full px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3c6e]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6 pt-4 border-t border-[var(--border-color)]">
+              <button
+                onClick={() => setShowAssignModal(false)}
+                className="px-6 py-2.5 border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl font-medium hover:bg-[var(--bg-hover)] transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveAssignments}
+                disabled={assignLoading}
+                className="px-6 py-2.5 bg-[#1a3c6e] text-white rounded-xl font-medium hover:bg-[#153058] transition flex items-center gap-2 disabled:opacity-50"
+              >
+                {assignLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar Designações
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
