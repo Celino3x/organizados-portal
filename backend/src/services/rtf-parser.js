@@ -2,7 +2,6 @@
 
 class RTFParser {
   constructor() {
-    // Variações das seções para correspondência mais flexível
     this.sectionPatterns = [
       { 
         patterns: ['TESOUROS DA PALAVRA DE DEUS', 'TESOUROS', 'TESOUROS DA PALAVRA'],
@@ -18,7 +17,6 @@ class RTFParser {
       }
     ];
     
-    // Mapeamento de meses
     this.months = {
       'JANEIRO': 1, 'FEVEREIRO': 2, 'MARÇO': 3, 'ABRIL': 4,
       'MAIO': 5, 'JUNHO': 6, 'JULHO': 7, 'AGOSTO': 8,
@@ -34,8 +32,16 @@ class RTFParser {
     const plainText = this.extractTextFromRTF(rtfContent);
     const lines = plainText.split('\n').map(l => l.trim()).filter(l => l);
 
-    console.log('📄 Linhas extraídas:', lines.length);
-    console.log('📄 Primeiras linhas:', lines.slice(0, 10));
+    console.log('📄 === INÍCIO DO PARSE RTF ===');
+    console.log(`📄 Total de linhas extraídas: ${lines.length}`);
+    console.log('📄 Primeiras 20 linhas:');
+    lines.slice(0, 20).forEach((line, idx) => {
+      console.log(`  ${idx + 1}: "${line}"`);
+    });
+    console.log('📄 Últimas 10 linhas:');
+    lines.slice(-10).forEach((line, idx) => {
+      console.log(`  ${lines.length - 10 + idx + 1}: "${line}"`);
+    });
 
     const result = {
       date: null,
@@ -44,17 +50,16 @@ class RTFParser {
     };
 
     let currentSection = null;
-    let currentPart = null;
     let i = 0;
 
     while (i < lines.length) {
       const line = lines[i];
       const upperLine = line.toUpperCase();
       
-      // Detectar data - padrão: "28 DE SETEMBRO - 4 DE OUTUBRO"
+      // Detectar data
       if (this.isDateLine(line)) {
         result.date = this.parseDate(line);
-        console.log('📅 Data encontrada:', result.date);
+        console.log(`📅 Data encontrada: "${line}" -> ${result.date}`);
         i++;
         continue;
       }
@@ -62,7 +67,7 @@ class RTFParser {
       // Detectar seção
       const sectionMatch = this.detectSection(line);
       if (sectionMatch) {
-        console.log('📂 Seção encontrada:', sectionMatch);
+        console.log(`📂 Seção encontrada: "${line}" -> ${sectionMatch}`);
         currentSection = {
           name: sectionMatch,
           parts: [],
@@ -77,7 +82,7 @@ class RTFParser {
       const songMatch = line.match(/Cântico\s+(\d+)/i);
       if (songMatch && currentSection) {
         currentSection.song = songMatch[1];
-        console.log('🎵 Cântico:', songMatch[1]);
+        console.log(`🎵 Cântico: ${songMatch[1]}`);
         i++;
         continue;
       }
@@ -85,6 +90,7 @@ class RTFParser {
       // Detectar parte da reunião
       const partMatch = this.detectPart(line);
       if (partMatch && currentSection) {
+        console.log(`📌 Parte encontrada: ${partMatch.number}. ${partMatch.name} (${partMatch.time || 'sem tempo'})`);
         const part = {
           number: partMatch.number,
           name: partMatch.name,
@@ -93,13 +99,15 @@ class RTFParser {
           assistant: null
         };
 
-        console.log(`📌 Parte ${part.number}: ${part.name}`);
-
         // Procurar pelo designado nas próximas linhas
         const speakerInfo = this.findSpeaker(lines, i + 1);
         if (speakerInfo) {
           part.speaker = speakerInfo.speaker;
           part.assistant = speakerInfo.assistant;
+          console.log(`  👤 Designado: ${part.speaker || 'não encontrado'}`);
+          if (part.assistant) {
+            console.log(`  👥 Ajudante: ${part.assistant}`);
+          }
           if (speakerInfo.linesSkipped > 0) {
             i += speakerInfo.linesSkipped;
           }
@@ -116,15 +124,26 @@ class RTFParser {
     // Se não encontrou data, usar a data atual
     if (!result.date) {
       result.date = new Date();
+      console.log('⚠️ Nenhuma data encontrada, usando data atual');
     }
 
-    // Log do resultado
-    console.log('📊 Resultado do parse:');
-    console.log(`  📅 Data: ${result.date}`);
-    console.log(`  📂 Seções: ${result.sections.length}`);
+    console.log('📊 === RESUMO DO PARSE ===');
+    console.log(`  📅 Data: ${result.date.toISOString().split('T')[0]}`);
+    console.log(`  📂 Seções encontradas: ${result.sections.length}`);
+    if (result.sections.length === 0) {
+      console.log('  ⚠️ NENHUMA SEÇÃO ENCONTRADA!');
+      console.log('  🔍 Verifique se o texto contém:');
+      console.log('     - "Tesouros da Palavra de Deus"');
+      console.log('     - "Faça seu melhor no ministério"');
+      console.log('     - "Nossa vida cristã"');
+    }
     result.sections.forEach(s => {
       console.log(`    - ${s.name}: ${s.parts.length} partes`);
+      s.parts.forEach(p => {
+        console.log(`      ${p.number}. ${p.name} (${p.speaker || 'sem designado'})`);
+      });
     });
+    console.log('📄 === FIM DO PARSE RTF ===');
 
     return result;
   }
@@ -214,7 +233,6 @@ class RTFParser {
    */
   detectPart(line) {
     // Padrão: "1. Nome da parte (10 min)"
-    // Também: "1. Nome da parte"
     const match = line.match(/^(\d+)\.\s+(.+?)(?:\s*\((\d+)\s*min\))?\s*$/i);
     if (match) {
       return {
@@ -245,7 +263,6 @@ class RTFParser {
       }
 
       // Verificar se tem ajudante
-      // Padrões: "Nome, Nome (ajudante)" ou "Nome, Nome"
       const assistantMatch = line.match(/^(.+?)\s*,\s*(.+?)(?:\s*\(ajudante\))?$/i);
       if (assistantMatch) {
         speaker = assistantMatch[1].trim();
@@ -254,7 +271,7 @@ class RTFParser {
         break;
       }
 
-      // Apenas o designado - verificar se não é um número ou data
+      // Apenas o designado
       if (line.length > 2 && !line.match(/^\d/) && !this.isDateLine(line)) {
         speaker = line.trim();
         linesSkipped = 1;
