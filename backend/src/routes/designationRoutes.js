@@ -418,7 +418,7 @@ router.get('/export/:date', async (req, res) => {
           song: d.song
         });
         return acc;
-      }, {} as Record<string, any[]>),
+     }, {}),
       total: designs.length
     };
 
