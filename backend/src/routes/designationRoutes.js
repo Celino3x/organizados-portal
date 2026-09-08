@@ -115,11 +115,13 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
       message: 'Designações importadas com sucesso',
       count: designs.length,
       date: parsedData.date,
-      sections: parsedData.sections.map(s => ({
-        name: s.name,
-        parts: s.parts.length,
-        song: s.song
-      })),
+      sections: parsedData.sections.map(function(s) {
+        return {
+          name: s.name,
+          parts: s.parts.length,
+          song: s.song
+        };
+      }),
       designs
     });
 
@@ -204,7 +206,7 @@ router.get('/meetings', async (req, res) => {
     }
 
     const meetings = await prisma.meeting.findMany({
-      where,
+      where: where,
       include: { semana: true },
       orderBy: { data_reuniao: 'desc' }
     });
@@ -225,7 +227,7 @@ router.post('/meetings', async (req, res) => {
       data: {
         semana_id: parseInt(semana_id),
         data_reuniao: new Date(data_reuniao),
-        congregacao,
+        congregacao: congregacao || 'VILAR GUANABARA',
         designacoes_json: designacoes || []
       }
     });
@@ -253,8 +255,10 @@ router.get('/meeting/:id/designations', async (req, res) => {
     const partes = meeting.semana?.partes_json || [];
     const designacoes = meeting.designacoes_json || [];
     
-    const result = partes.map((parte: any) => {
-      const designacao = designacoes.find((d: any) => d.parte_id === parte.id);
+    const result = partes.map(function(parte) {
+      const designacao = designacoes.find(function(d) {
+        return d.parte_id === parte.id;
+      });
       return {
         ...parte,
         publicador_id: designacao?.publicador_id || null,
@@ -277,13 +281,15 @@ router.put('/meeting/:id/assign', async (req, res) => {
     const { id } = req.params;
     const { assignments } = req.body;
     
-    const designacoes = assignments.map((a: any) => ({
-      parte_id: a.id,
-      publicador_id: a.publicador_id || null,
-      publicador_nome: a.publicador_nome || '',
-      ajudante_id: a.ajudante_id || null,
-      ajudante_nome: a.ajudante_nome || ''
-    }));
+    const designacoes = assignments.map(function(a) {
+      return {
+        parte_id: a.id,
+        publicador_id: a.publicador_id || null,
+        publicador_nome: a.publicador_nome || '',
+        ajudante_id: a.ajudante_id || null,
+        ajudante_nome: a.ajudante_nome || ''
+      };
+    });
     
     const meeting = await prisma.meeting.update({
       where: { id: parseInt(id) },
@@ -346,7 +352,7 @@ router.get('/by-date/:date', async (req, res) => {
       orderBy: { order: 'asc' }
     });
 
-    const grouped = designs.reduce((acc, d) => {
+    const grouped = designs.reduce(function(acc, d) {
       if (!acc[d.section]) acc[d.section] = [];
       acc[d.section].push(d);
       return acc;
@@ -392,10 +398,10 @@ router.post('/', async (req, res) => {
       data: {
         date: new Date(date),
         meetingType: meetingType || 'midweek',
-        section,
-        partNumber,
-        partName,
-        speaker,
+        section: section,
+        partNumber: partNumber,
+        partName: partName,
+        speaker: speaker,
         assistant: assistant || null,
         time: time || null,
         song: song ? String(song) : null,
@@ -498,7 +504,7 @@ router.get('/by-month/:year/:month', async (req, res) => {
       orderBy: { date: 'asc' }
     });
 
-    const groupedByDate = designs.reduce((acc, d) => {
+    const groupedByDate = designs.reduce(function(acc, d) {
       const dateKey = d.date.toISOString().split('T')[0];
       if (!acc[dateKey]) acc[dateKey] = [];
       acc[dateKey].push(d);
@@ -552,7 +558,9 @@ router.get('/dates', async (req, res) => {
       orderBy: { date: 'desc' }
     });
 
-    const dates = designs.map(d => d.date.toISOString().split('T')[0]);
+    const dates = designs.map(function(d) {
+      return d.date.toISOString().split('T')[0];
+    });
     
     res.json({
       count: dates.length,
@@ -593,7 +601,7 @@ router.get('/export/:date', async (req, res) => {
     const program = {
       date: date,
       meetingType: designs.length > 0 ? designs[0].meetingType : 'midweek',
-      sections: designs.reduce((acc, d) => {
+      sections: designs.reduce(function(acc, d) {
         if (!acc[d.section]) acc[d.section] = [];
         acc[d.section].push({
           partNumber: d.partNumber,
