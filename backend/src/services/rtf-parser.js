@@ -1,10 +1,22 @@
+// backend/src/services/rtf-parser.js
+
 class RTFParser {
   constructor() {
-    this.sections = {
-      TESOUROS: 'Tesouros da Palavra de Deus',
-      MINISTERIO: 'Faça seu melhor no ministério',
-      VIDA_CRISTA: 'Nossa vida cristã'
-    };
+    // Variações das seções para correspondência mais flexível
+    this.sectionPatterns = [
+      { 
+        patterns: ['TESOUROS DA PALAVRA DE DEUS', 'TESOUROS', 'TESOUROS DA PALAVRA'],
+        name: 'Tesouros da Palavra de Deus'
+      },
+      { 
+        patterns: ['FAÇA SEU MELHOR NO MINISTÉRIO', 'FAÇA SEU MELHOR', 'MINISTÉRIO', 'FAÇA O SEU MELHOR'],
+        name: 'Faça seu melhor no ministério'
+      },
+      { 
+        patterns: ['NOSSA VIDA CRISTÃ', 'VIDA CRISTÃ', 'NOSSA VIDA'],
+        name: 'Nossa vida cristã'
+      }
+    ];
     
     // Mapeamento de meses
     this.months = {
@@ -22,6 +34,9 @@ class RTFParser {
     const plainText = this.extractTextFromRTF(rtfContent);
     const lines = plainText.split('\n').map(l => l.trim()).filter(l => l);
 
+    console.log('📄 Linhas extraídas:', lines.length);
+    console.log('📄 Primeiras linhas:', lines.slice(0, 10));
+
     const result = {
       date: null,
       meetingType: 'midweek',
@@ -34,10 +49,12 @@ class RTFParser {
 
     while (i < lines.length) {
       const line = lines[i];
+      const upperLine = line.toUpperCase();
       
-      // Detectar data
+      // Detectar data - padrão: "28 DE SETEMBRO - 4 DE OUTUBRO"
       if (this.isDateLine(line)) {
         result.date = this.parseDate(line);
+        console.log('📅 Data encontrada:', result.date);
         i++;
         continue;
       }
@@ -45,6 +62,7 @@ class RTFParser {
       // Detectar seção
       const sectionMatch = this.detectSection(line);
       if (sectionMatch) {
+        console.log('📂 Seção encontrada:', sectionMatch);
         currentSection = {
           name: sectionMatch,
           parts: [],
@@ -59,6 +77,7 @@ class RTFParser {
       const songMatch = line.match(/Cântico\s+(\d+)/i);
       if (songMatch && currentSection) {
         currentSection.song = songMatch[1];
+        console.log('🎵 Cântico:', songMatch[1]);
         i++;
         continue;
       }
@@ -74,12 +93,13 @@ class RTFParser {
           assistant: null
         };
 
+        console.log(`📌 Parte ${part.number}: ${part.name}`);
+
         // Procurar pelo designado nas próximas linhas
         const speakerInfo = this.findSpeaker(lines, i + 1);
         if (speakerInfo) {
           part.speaker = speakerInfo.speaker;
           part.assistant = speakerInfo.assistant;
-          // Pular linhas que contêm o nome do designado
           if (speakerInfo.linesSkipped > 0) {
             i += speakerInfo.linesSkipped;
           }
@@ -98,6 +118,14 @@ class RTFParser {
       result.date = new Date();
     }
 
+    // Log do resultado
+    console.log('📊 Resultado do parse:');
+    console.log(`  📅 Data: ${result.date}`);
+    console.log(`  📂 Seções: ${result.sections.length}`);
+    result.sections.forEach(s => {
+      console.log(`    - ${s.name}: ${s.parts.length} partes`);
+    });
+
     return result;
   }
 
@@ -105,22 +133,31 @@ class RTFParser {
    * Extrai texto puro do RTF
    */
   extractTextFromRTF(rtf) {
-    return rtf
-      // Remover comandos RTF
-      .replace(/\\[a-z]+(?:\s*[-]?\d+)?/g, '')
-      // Remover chaves
-      .replace(/[{}]/g, '')
-      // Converter caracteres acentuados
-      .replace(/\\'[0-9a-f]{2}/g, (match) => {
-        const code = parseInt(match.substring(2), 16);
-        return String.fromCharCode(code);
-      })
-      // Substituir quebras de linha
-      .replace(/\\par/g, '\n')
-      .replace(/\\line/g, '\n')
-      // Remover espaços extras
-      .replace(/\s+/g, ' ')
-      .trim();
+    let text = rtf;
+    
+    // Remover cabeçalho RTF
+    text = text.replace(/{\\rtf[^}]*}/i, '');
+    
+    // Remover comandos RTF
+    text = text.replace(/\\[a-z]+(?:\s*[-]?\d+)?/g, '');
+    text = text.replace(/\\'[0-9a-f]{2}/g, (match) => {
+      const code = parseInt(match.substring(2), 16);
+      return String.fromCharCode(code);
+    });
+    
+    // Remover chaves
+    text = text.replace(/[{}]/g, '');
+    
+    // Substituir quebras de linha
+    text = text.replace(/\\par/g, '\n');
+    text = text.replace(/\\line/g, '\n');
+    text = text.replace(/\\tab/g, ' ');
+    
+    // Remover espaços extras e normalizar
+    text = text.replace(/\s+/g, ' ');
+    text = text.split('\n').map(line => line.trim()).join('\n');
+    
+    return text.trim();
   }
 
   /**
@@ -136,7 +173,6 @@ class RTFParser {
   parseDate(dateStr) {
     const parts = dateStr.split('-').map(s => s.trim());
     
-    // Tentar extrair mês e dia
     const match = parts[0].match(/(\d+)\s+DE\s+(\w+)/i);
     if (match) {
       const day = parseInt(match[1]);
@@ -144,10 +180,8 @@ class RTFParser {
       const month = this.months[monthName] || 1;
       const year = new Date().getFullYear();
       
-      // Ajustar ano se necessário
       const date = new Date(year, month - 1, day);
       
-      // Se a data for no futuro, usar ano anterior
       if (date > new Date()) {
         date.setFullYear(year - 1);
       }
@@ -162,12 +196,16 @@ class RTFParser {
    * Detecta se a linha é uma seção
    */
   detectSection(line) {
-    const sectionNames = Object.values(this.sections);
-    for (const name of sectionNames) {
-      if (line.includes(name)) {
-        return name;
+    const upperLine = line.toUpperCase();
+    
+    for (const pattern of this.sectionPatterns) {
+      for (const p of pattern.patterns) {
+        if (upperLine.includes(p)) {
+          return pattern.name;
+        }
       }
     }
+    
     return null;
   }
 
@@ -176,6 +214,7 @@ class RTFParser {
    */
   detectPart(line) {
     // Padrão: "1. Nome da parte (10 min)"
+    // Também: "1. Nome da parte"
     const match = line.match(/^(\d+)\.\s+(.+?)(?:\s*\((\d+)\s*min\))?\s*$/i);
     if (match) {
       return {
@@ -195,11 +234,13 @@ class RTFParser {
     let assistant = null;
     let linesSkipped = 0;
 
-    for (let i = startIndex; i < Math.min(startIndex + 4, lines.length); i++) {
+    for (let i = startIndex; i < Math.min(startIndex + 5, lines.length); i++) {
       const line = lines[i];
       
-      // Pular linhas vazias ou que são continuações do texto
-      if (!line || this.detectPart(line) || this.detectSection(line)) {
+      if (!line) break;
+      
+      // Pular linhas com parte ou seção
+      if (this.detectPart(line) || this.detectSection(line)) {
         break;
       }
 
@@ -213,8 +254,8 @@ class RTFParser {
         break;
       }
 
-      // Apenas o designado
-      if (line.length > 2 && !line.match(/^\d/)) {
+      // Apenas o designado - verificar se não é um número ou data
+      if (line.length > 2 && !line.match(/^\d/) && !this.isDateLine(line)) {
         speaker = line.trim();
         linesSkipped = 1;
         break;
