@@ -10,7 +10,11 @@ import TerritoryMap from './pages/TerritoryMap';
 import TerritoryView from './pages/TerritoryView';
 import TerritoryDetail from './pages/TerritoryDetail';
 import TerritoryWorker from './pages/TerritoryWorker';
+import TerritoryWorkerPublic from './pages/TerritoryWorkerPublic';
+import TerritoryWorkerTest from './pages/TerritoryWorkerTest';
 import Designations from './pages/Designations';
+import MeetingDesignations from './pages/MeetingDesignations';
+import MeetingCreate from './pages/MeetingCreate';
 import Reports from './pages/Reports';
 import Congregation from './pages/Congregation';
 import PublisherForm from './pages/PublisherForm';
@@ -27,12 +31,20 @@ const AppRoutes = () => {
       {/* Rotas Públicas */}
       <Route path="/login" element={<Login />} />
       
-      {/* Rota do Território para Dirigentes (pública ou protegida) */}
-      {/* Se quiser que seja acessível sem login, deixe como público */}
+      {/* Rota do Território para Dirigentes (pública) */}
+      <Route path="/territories/:id/public" element={<TerritoryWorkerPublic />} />
       <Route path="/territory/:id/worker" element={<TerritoryWorker />} />
       
       {/* Rotas Protegidas (requer autenticação) */}
       <Route path="/" element={
+        <ProtectedRoute>
+          <Layout>
+            <Dashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/dashboard" element={
         <ProtectedRoute>
           <Layout>
             <Dashboard />
@@ -66,10 +78,43 @@ const AppRoutes = () => {
       
       <Route path="/territories/:id" element={<TerritoryView />} />
       
+      <Route path="/territories/:id/worker" element={
+        <ProtectedRoute>
+          <Layout>
+            <TerritoryWorker />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/territories/:id/worker-test" element={
+        <ProtectedRoute>
+          <Layout>
+            <TerritoryWorkerTest />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Rotas de Designações */}
       <Route path="/designations" element={
         <ProtectedRoute>
           <Layout>
             <Designations />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/designations/meetings" element={
+        <ProtectedRoute>
+          <Layout>
+            <MeetingDesignations />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/designations/meetings/create" element={
+        <ProtectedRoute>
+          <Layout>
+            <MeetingCreate />
           </Layout>
         </ProtectedRoute>
       } />
