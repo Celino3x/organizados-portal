@@ -12,6 +12,7 @@ import TerritoryWorkerPublic from './pages/TerritoryWorkerPublic';
 import TerritoryWorkerTest from './pages/TerritoryWorkerTest';
 import Designations from './pages/Designations';
 import MeetingDesignations from './pages/MeetingDesignations';
+import MeetingCreate from './pages/MeetingCreate';
 import Congregation from './pages/Congregation';
 import Reports from './pages/Reports';
 
@@ -38,6 +39,7 @@ function App() {
               <Route path="territories/:id/worker-test" element={<TerritoryWorkerTest />} />
               <Route path="designations" element={<Designations />} />
               <Route path="designations/meetings" element={<MeetingDesignations />} />
+              <Route path="designations/meetings/create" element={<MeetingCreate />} />
               <Route path="congregation" element={<Congregation />} />
               <Route path="reports" element={<Reports />} />
             </Route>

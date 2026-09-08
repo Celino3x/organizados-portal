@@ -12,7 +12,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
-    // Aceitar apenas arquivos RTF
     const allowedTypes = ['application/rtf', 'text/rtf', 'application/msword'];
     if (allowedTypes.includes(file.mimetype) || file.originalname.endsWith('.rtf')) {
       cb(null, true);
@@ -46,7 +45,6 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
       totalParts: parsedData.sections.reduce((acc, s) => acc + s.parts.length, 0)
     });
 
-    // Validar dados extraídos
     if (!parsedData.date) {
       return res.status(400).json({ 
         error: 'Não foi possível identificar a data no arquivo RTF' 
@@ -59,12 +57,8 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
       });
     }
 
-    // ============================================
-    // CORREÇÃO: parsedData.date já é um objeto Date
-    // ============================================
     const meetingDate = new Date(parsedData.date);
     
-    // Verificar se a data é válida
     if (isNaN(meetingDate.getTime())) {
       console.error('❌ Data inválida:', parsedData.date);
       return res.status(400).json({ 
@@ -74,19 +68,15 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
 
     console.log(`📅 Data da reunião: ${meetingDate.toISOString()}`);
 
-    // Salvar no banco
     const designs = [];
     let order = 0;
 
-    // Usar transação para garantir consistência
     const result = await prisma.$transaction(async (tx) => {
-      // Criar range de datas (início e fim do dia)
       const startDate = new Date(meetingDate);
       startDate.setHours(0, 0, 0, 0);
       const endDate = new Date(meetingDate);
       endDate.setHours(23, 59, 59, 999);
 
-      // Primeiro, remover designações existentes para esta data
       await tx.meetingDesignation.deleteMany({
         where: {
           date: {
@@ -96,7 +86,6 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
         }
       });
 
-      // Depois, inserir as novas
       const created = [];
       for (const section of parsedData.sections) {
         for (const part of section.parts) {
@@ -137,7 +126,6 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao importar RTF:', error);
     
-    // Tratar erros específicos
     if (error.message === 'Apenas arquivos RTF são permitidos') {
       return res.status(400).json({ error: error.message });
     }
@@ -148,17 +136,200 @@ router.post('/import-rtf', upload.single('file'), async (req, res) => {
   }
 });
 
+// ============================================
+// ROTAS DE SEMANAS (TEMPLATES)
+// ============================================
+
+// Listar semanas disponíveis
+router.get('/weeks', async (req, res) => {
+  try {
+    const weeks = await prisma.weekTemplate.findMany({
+      orderBy: { data_inicio: 'desc' }
+    });
+    res.json(weeks);
+  } catch (error) {
+    console.error('❌ Erro ao buscar semanas:', error);
+    res.status(500).json({ error: 'Erro ao buscar semanas' });
+  }
+});
+
+// Buscar semana por ID
+router.get('/weeks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const week = await prisma.weekTemplate.findUnique({
+      where: { id: parseInt(id) }
+    });
+    if (!week) {
+      return res.status(404).json({ error: 'Semana não encontrada' });
+    }
+    res.json(week);
+  } catch (error) {
+    console.error('❌ Erro ao buscar semana:', error);
+    res.status(500).json({ error: 'Erro ao buscar semana' });
+  }
+});
+
+// ============================================
+// ROTAS DE REUNIÕES
+// ============================================
+
+// Listar reuniões
+router.get('/meetings', async (req, res) => {
+  try {
+    const { search, year, month } = req.query;
+    
+    const where: any = {};
+    
+    if (search) {
+      where.OR = [
+        { semana: { contains: search, mode: 'insensitive' } },
+        { texto_biblia: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (year) {
+      where.data_reuniao = {
+        gte: new Date(parseInt(year), 0, 1),
+        lt: new Date(parseInt(year) + 1, 0, 1)
+      };
+    }
+    
+    if (month) {
+      const yearNum = year ? parseInt(year) : new Date().getFullYear();
+      where.data_reuniao = {
+        gte: new Date(yearNum, parseInt(month) - 1, 1),
+        lt: new Date(yearNum, parseInt(month), 1)
+      };
+    }
+
+    const meetings = await prisma.meeting.findMany({
+      where,
+      include: { semana: true },
+      orderBy: { data_reuniao: 'desc' }
+    });
+    
+    res.json(meetings);
+  } catch (error) {
+    console.error('❌ Erro ao buscar reuniões:', error);
+    res.status(500).json({ error: 'Erro ao buscar reuniões' });
+  }
+});
+
+// Criar reunião
+router.post('/meetings', async (req, res) => {
+  try {
+    const { semana_id, data_reuniao, congregacao, designacoes } = req.body;
+    
+    const meeting = await prisma.meeting.create({
+      data: {
+        semana_id: parseInt(semana_id),
+        data_reuniao: new Date(data_reuniao),
+        congregacao,
+        designacoes_json: designacoes || []
+      }
+    });
+    
+    res.status(201).json(meeting);
+  } catch (error) {
+    console.error('❌ Erro ao criar reunião:', error);
+    res.status(500).json({ error: 'Erro ao criar reunião: ' + error.message });
+  }
+});
+
+// Buscar designações de uma reunião
+router.get('/meeting/:id/designations', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: parseInt(id) },
+      include: { semana: true }
+    });
+    
+    if (!meeting) {
+      return res.status(404).json({ error: 'Reunião não encontrada' });
+    }
+    
+    const partes = meeting.semana?.partes_json || [];
+    const designacoes = meeting.designacoes_json || [];
+    
+    const result = partes.map((parte: any) => {
+      const designacao = designacoes.find((d: any) => d.parte_id === parte.id);
+      return {
+        ...parte,
+        publicador_id: designacao?.publicador_id || null,
+        publicador_nome: designacao?.publicador_nome || '',
+        ajudante_id: designacao?.ajudante_id || null,
+        ajudante_nome: designacao?.ajudante_nome || ''
+      };
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Erro ao buscar designações:', error);
+    res.status(500).json({ error: 'Erro ao buscar designações' });
+  }
+});
+
+// Salvar designações de uma reunião
+router.put('/meeting/:id/assign', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { assignments } = req.body;
+    
+    const designacoes = assignments.map((a: any) => ({
+      parte_id: a.id,
+      publicador_id: a.publicador_id || null,
+      publicador_nome: a.publicador_nome || '',
+      ajudante_id: a.ajudante_id || null,
+      ajudante_nome: a.ajudante_nome || ''
+    }));
+    
+    const meeting = await prisma.meeting.update({
+      where: { id: parseInt(id) },
+      data: { designacoes_json: designacoes }
+    });
+    
+    res.json({ message: 'Designações salvas com sucesso', meeting });
+  } catch (error) {
+    console.error('❌ Erro ao salvar designações:', error);
+    res.status(500).json({ error: 'Erro ao salvar designações' });
+  }
+});
+
+// Excluir reunião
+router.delete('/meetings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: parseInt(id) }
+    });
+    
+    if (!meeting) {
+      return res.status(404).json({ error: 'Reunião não encontrada' });
+    }
+    
+    await prisma.meeting.delete({
+      where: { id: parseInt(id) }
+    });
+    
+    res.json({ message: 'Reunião excluída com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao excluir reunião:', error);
+    res.status(500).json({ error: 'Erro ao excluir reunião' });
+  }
+});
+
 // Listar designações por data
 router.get('/by-date/:date', async (req, res) => {
   try {
     const date = new Date(req.params.date);
     
-    // Validar data
     if (isNaN(date.getTime())) {
       return res.status(400).json({ error: 'Data inválida' });
     }
 
-    // Criar range de datas (início e fim do dia)
     const startDate = new Date(date);
     startDate.setHours(0, 0, 0, 0);
     
@@ -175,7 +346,6 @@ router.get('/by-date/:date', async (req, res) => {
       orderBy: { order: 'asc' }
     });
 
-    // Agrupar por seção para facilitar o frontend
     const grouped = designs.reduce((acc, d) => {
       if (!acc[d.section]) acc[d.section] = [];
       acc[d.section].push(d);
@@ -212,7 +382,6 @@ router.post('/', async (req, res) => {
       order 
     } = req.body;
 
-    // Validar campos obrigatórios
     if (!date || !section || !partNumber || !partName || !speaker) {
       return res.status(400).json({ 
         error: 'Campos obrigatórios: date, section, partNumber, partName, speaker' 
@@ -229,7 +398,7 @@ router.post('/', async (req, res) => {
         speaker,
         assistant: assistant || null,
         time: time || null,
-        song: song || null,
+        song: song ? String(song) : null,
         order: order || 0
       }
     });
@@ -248,7 +417,6 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const { partName, speaker, assistant, time, song, order } = req.body;
 
-    // Verificar se a designação existe
     const existing = await prisma.meetingDesignation.findUnique({
       where: { id: parseInt(id) }
     });
@@ -264,7 +432,7 @@ router.put('/:id', async (req, res) => {
         speaker: speaker || existing.speaker,
         assistant: assistant !== undefined ? assistant : existing.assistant,
         time: time || existing.time,
-        song: song || existing.song,
+        song: song !== undefined && song !== null ? String(song) : existing.song,
         order: order || existing.order
       }
     });
@@ -282,7 +450,6 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Verificar se a designação existe
     const existing = await prisma.meetingDesignation.findUnique({
       where: { id: parseInt(id) }
     });
@@ -331,7 +498,6 @@ router.get('/by-month/:year/:month', async (req, res) => {
       orderBy: { date: 'asc' }
     });
 
-    // Agrupar por data
     const groupedByDate = designs.reduce((acc, d) => {
       const dateKey = d.date.toISOString().split('T')[0];
       if (!acc[dateKey]) acc[dateKey] = [];
@@ -424,7 +590,6 @@ router.get('/export/:date', async (req, res) => {
       orderBy: { order: 'asc' }
     });
 
-    // Estruturar para exportação
     const program = {
       date: date,
       meetingType: designs.length > 0 ? designs[0].meetingType : 'midweek',
