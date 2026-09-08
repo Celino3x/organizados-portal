@@ -21,7 +21,7 @@ import {
   Maximize2,
   Minimize2
 } from 'lucide-react';
-import { territories, getStatusLabel, getStatusBadge, getTypeLabel } from '../data/territories';
+import { getAllTerritories, getTerritoryById, getStatusLabel, getStatusBadge, getTypeLabel } from '../data/territories';
 
 interface TerritoryWork {
   id: string;
@@ -73,7 +73,7 @@ const getMockPolygon = (latitude: number, longitude: number) => {
 const TerritoryWorkerTest: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [territory, setTerritory] = useState(territories.find(t => t.id === id));
+  const [territory, setTerritory] = useState(getTerritoryById(id || ''));
   const [work, setWork] = useState<TerritoryWork | null>(null);
   const [showInfo, setShowInfo] = useState(true);
   const [loading, setLoading] = useState(false);

@@ -18,13 +18,12 @@ import {
   Info,
   ArrowLeft,
   PlayCircle,
-  Check,
   Maximize2,
   Minimize2,
   Copy,
   Link as LinkIcon
 } from 'lucide-react';
-import { territories, getStatusLabel, getStatusBadge, getTypeLabel } from '../data/territories';
+import { getAllTerritories, getTerritoryById, getStatusLabel, getStatusBadge, getTypeLabel } from '../data/territories';
 
 // Função para gerar polígono mockado
 const getMockPolygon = (latitude: number, longitude: number) => {
@@ -65,7 +64,7 @@ const createStartIcon = () => {
 const TerritoryWorkerPublic: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [territory, setTerritory] = useState(territories.find(t => t.id === id));
+  const [territory, setTerritory] = useState(getTerritoryById(id || ''));
   const [work, setWork] = useState<any>(null);
   const [showInfo, setShowInfo] = useState(true);
   const [loading, setLoading] = useState(false);
