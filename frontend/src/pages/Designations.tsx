@@ -56,7 +56,16 @@ const Designations: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.get(`/designations/by-date/${selectedDate}`);
-      setDesignations(response.data);
+// O backend retorna um objeto com { designs: [], grouped: {}, total: 0 }
+// Extrair o array de designações
+const data = response.data;
+if (data && Array.isArray(data.designs)) {
+  setDesignations(data.designs);
+} else if (Array.isArray(data)) {
+  setDesignations(data);
+} else {
+  setDesignations([]);
+}
     } catch (error) {
       console.error('Erro ao buscar designações:', error);
     } finally {
