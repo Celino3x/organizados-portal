@@ -179,7 +179,7 @@ router.get('/meetings', async (req, res) => {
   try {
     const { search, year, month } = req.query;
     
-    const where: any = {};
+    const where = {};
     
     if (search) {
       where.OR = [
