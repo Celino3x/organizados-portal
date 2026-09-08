@@ -27,7 +27,6 @@ model User {
   updatedAt   DateTime @updatedAt
 
   territoryDesignations TerritoryDesignation[]
-  meetingDesignations   MeetingDesignation[]
   reports               Report[]
 
   @@map("users")
@@ -96,6 +95,9 @@ model MeetingDesignation {
   order       Int      @default(0) // Ordem de exibição
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Removendo a relação com User para evitar erro
+  // user      User?     @relation(fields: [userId], references: [id])  // REMOVIDO
 
   @@map("meeting_designations")
 }
