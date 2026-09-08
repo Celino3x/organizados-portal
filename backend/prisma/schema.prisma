@@ -14,11 +14,11 @@ model User {
   password    String
   congregation String
   phone       String?
-  cellphone   String?   // NOVO: Celular
-  address     String?   // NOVO: Endereço
-  birthDate   String?   // NOVO: Data de Nascimento
-  baptismDate String?   // NOVO: Data de Batismo
-  class       String?   // NOVO: "Outras Ovelhas" ou "Ungido"
+  cellphone   String?   // Celular
+  address     String?   // Endereço
+  birthDate   String?   // Data de Nascimento
+  baptismDate String?   // Data de Batismo
+  class       String?   // "Outras Ovelhas" ou "Ungido"
   gender      String   @default("male")
   accessLevel String   @default("viewer")
   privileges  String[] @default(["publisher"])
@@ -26,8 +26,9 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  designations Designation[]
-  reports      Report[]
+  territoryDesignations TerritoryDesignation[]
+  meetingDesignations   MeetingDesignation[]
+  reports               Report[]
 
   @@map("users")
 }
@@ -56,17 +57,18 @@ model Territory {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  designations  Designation[]
+  designations  TerritoryDesignation[]
 
   @@map("territories")
 }
 
-model Designation {
+// Designações de Território (já existente)
+model TerritoryDesignation {
   id          Int      @id @default(autoincrement())
   territoryId String
   userId      Int
   assignedAt  DateTime @default(now())
-  status      String   @default("pending")
+  status      String   @default("pending") // pending, accepted, rejected, completed
   completedAt DateTime?
   notes       String?
   createdAt   DateTime @default(now())
@@ -75,7 +77,27 @@ model Designation {
   territory   Territory @relation(fields: [territoryId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
 
-  @@map("designations")
+  @@map("territory_designations")
+}
+
+// Designações de Reunião (NOVO)
+model MeetingDesignation {
+  id          Int      @id @default(autoincrement())
+  date        DateTime // Data da reunião
+  meetingType String   @default("midweek") // "midweek" | "weekend"
+  section     String   // "Tesouros da Palavra de Deus", "Faça seu melhor no ministério", "Nossa vida cristã"
+  partNumber  String   // "1", "2", "3"... 
+  partName    String   // Nome da parte
+  speaker     String   // Nome do designado
+  assistant   String?  // Nome do ajudante (opcional)
+  time        String?  // "10 min", "4 min"...
+  song        String?  // Número do cântico
+  notes       String?  // Observações adicionais
+  order       Int      @default(0) // Ordem de exibição
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("meeting_designations")
 }
 
 model Report {

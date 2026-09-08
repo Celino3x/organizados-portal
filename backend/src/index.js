@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'organizados_secret_key';
 
 // ============================================
-// CONFIGURAÇÃO CORS ATUALIZADA
+// CONFIGURAÇÃO CORS
 // ============================================
 const allowedOrigins = [
   'http://localhost:5173',
@@ -359,13 +359,11 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
       isActive 
     } = req.body;
 
-    // Verificar se email já existe
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: 'Email já cadastrado' });
     }
 
-    // Validar privilégios para mulheres
     if (gender === 'female') {
       const invalidPrivileges = ['ministerial', 'elder'];
       const hasInvalid = (privileges || []).some(p => invalidPrivileges.includes(p));
@@ -376,7 +374,6 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
       }
     }
 
-    // Hash da senha
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
@@ -398,7 +395,6 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
       }
     });
 
-    // Remover senha da resposta
     const { password: _, ...userWithoutPassword } = user;
     console.log('✅ Usuário criado pelo admin:', user.email);
     res.status(201).json(userWithoutPassword);
@@ -429,13 +425,11 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       isActive 
     } = req.body;
 
-    // Verificar se usuário existe
     const existingUser = await prisma.user.findUnique({ where: { id: Number(id) } });
     if (!existingUser) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    // Verificar se email já está em uso por outro usuário
     if (email && email !== existingUser.email) {
       const emailTaken = await prisma.user.findUnique({ where: { email } });
       if (emailTaken) {
@@ -443,7 +437,6 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       }
     }
 
-    // Validar privilégios para mulheres
     const userGender = gender || existingUser.gender;
     if (userGender === 'female') {
       const invalidPrivileges = ['ministerial', 'elder'];
@@ -455,7 +448,6 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       }
     }
 
-    // Preparar dados para atualização
     const updateData = {
       name: name || existingUser.name,
       email: email || existingUser.email,
@@ -472,7 +464,6 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       isActive: isActive !== undefined ? isActive : existingUser.isActive
     };
 
-    // Atualizar senha se fornecida
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
     }
@@ -482,7 +473,6 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       data: updateData
     });
 
-    // Remover senha da resposta
     const { password: _, ...userWithoutPassword } = user;
     console.log('✅ Usuário atualizado:', user.email);
     res.json(userWithoutPassword);
@@ -512,6 +502,12 @@ app.delete('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
 });
 
 // ============================================
+// ROTAS DE DESIGNAÇÕES DE REUNIÃO
+// ============================================
+const designationRoutes = require('./routes/designationRoutes');
+app.use('/api/designations', designationRoutes);
+
+// ============================================
 // HEALTH CHECK
 // ============================================
 app.get('/api/health', (req, res) => {
@@ -531,6 +527,12 @@ console.log('  GET  /api/users/:id');
 console.log('  POST /api/users');
 console.log('  PUT  /api/users/:id');
 console.log('  DELETE /api/users/:id');
+console.log('  POST /api/designations/import-rtf');
+console.log('  GET  /api/designations/by-date/:date');
+console.log('  POST /api/designations');
+console.log('  PUT  /api/designations/:id');
+console.log('  DELETE /api/designations/:id');
+console.log('  GET  /api/designations/by-month/:year/:month');
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
