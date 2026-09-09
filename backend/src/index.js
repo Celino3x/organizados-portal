@@ -91,7 +91,6 @@ app.post('/api/auth/register', async (req, res) => {
       password, 
       congregation,
       phone,
-      cellphone,
       address,
       birthDate,
       baptismDate,
@@ -123,7 +122,6 @@ app.post('/api/auth/register', async (req, res) => {
         password: hashedPassword,
         congregation,
         phone: phone || null,
-        cellphone: cellphone || null,
         address: address || null,
         birthDate: birthDate || null,
         baptismDate: baptismDate || null,
@@ -232,7 +230,7 @@ app.get('/api/auth/verify', async (req, res) => {
         email: true,
         congregation: true,
         phone: true,
-           address: true,
+        address: true,
         birthDate: true,
         baptismDate: true,
         class: true,
@@ -262,7 +260,7 @@ app.get('/api/auth/verify', async (req, res) => {
 });
 
 // ============================================
-// ROTAS DE USUÁRIOS
+// ROTAS DE USUÁRIOS - CORRIGIDAS
 // ============================================
 
 // Middleware de autenticação
@@ -295,9 +293,11 @@ const authorizeAdmin = (req, res, next) => {
   next();
 };
 
-// Listar todos os usuários
+// Listar todos os usuários - SEM cellphone
 app.get('/api/users', authenticate, authorizeAdmin, async (req, res) => {
   try {
+    console.log('📤 GET /api/users');
+    
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -305,7 +305,7 @@ app.get('/api/users', authenticate, authorizeAdmin, async (req, res) => {
         email: true,
         congregation: true,
         phone: true,
-        cellphone: true,
+        // cellphone REMOVIDO - não existe no schema
         address: true,
         birthDate: true,
         baptismDate: true,
@@ -319,14 +319,19 @@ app.get('/api/users', authenticate, authorizeAdmin, async (req, res) => {
       },
       orderBy: { name: 'asc' }
     });
+    
+    console.log(`✅ ${users.length} usuários encontrados`);
     res.json(users);
   } catch (error) {
     console.error('❌ Erro ao listar usuários:', error);
-    res.status(500).json({ error: 'Erro ao listar usuários' });
+    res.status(500).json({ 
+      error: 'Erro ao listar usuários',
+      details: error.message 
+    });
   }
 });
 
-// Buscar usuário por ID
+// Buscar usuário por ID - SEM cellphone
 app.get('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -338,7 +343,7 @@ app.get('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
         email: true,
         congregation: true,
         phone: true,
-        cellphone: true,
+        // cellphone REMOVIDO
         address: true,
         birthDate: true,
         baptismDate: true,
@@ -363,7 +368,7 @@ app.get('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
   }
 });
 
-// Criar usuário
+// Criar usuário - SEM cellphone
 app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
   try {
     const { 
@@ -372,7 +377,6 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
       password, 
       congregation,
       phone,
-      cellphone,
       address,
       birthDate,
       baptismDate,
@@ -407,7 +411,7 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
         password: hashedPassword,
         congregation,
         phone: phone || null,
-        cellphone: cellphone || null,
+        // cellphone REMOVIDO
         address: address || null,
         birthDate: birthDate || null,
         baptismDate: baptismDate || null,
@@ -428,7 +432,7 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
   }
 });
 
-// Atualizar usuário
+// Atualizar usuário - SEM cellphone
 app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -438,7 +442,6 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       password, 
       congregation,
       phone,
-      cellphone,
       address,
       birthDate,
       baptismDate,
@@ -477,7 +480,7 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       email: email || existingUser.email,
       congregation: congregation || existingUser.congregation,
       phone: phone !== undefined ? phone : existingUser.phone,
-      cellphone: cellphone !== undefined ? cellphone : existingUser.cellphone,
+      // cellphone REMOVIDO
       address: address !== undefined ? address : existingUser.address,
       birthDate: birthDate !== undefined ? birthDate : existingUser.birthDate,
       baptismDate: baptismDate !== undefined ? baptismDate : existingUser.baptismDate,
@@ -525,7 +528,11 @@ app.delete('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
   }
 });
 
-
+// ============================================
+// ROTAS DE DESIGNAÇÕES
+// ============================================
+const designationRoutes = require('./routes/designationRoutes');
+app.use('/api/designations', designationRoutes);
 
 // ============================================
 // INICIAR SERVIDOR
