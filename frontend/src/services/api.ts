@@ -1,6 +1,6 @@
 ﻿import axios from 'axios';
 
-// FORÇAR a URL do backend no Render
+// FORÇAR a URL do backend no Render - URL COMPLETA COM HTTPS
 const API_URL = 'https://organizados-portal.onrender.com/api';
 
 console.log('🔗 API URL:', API_URL);
