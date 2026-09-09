@@ -1,7 +1,7 @@
 ﻿import axios from 'axios';
 
-// Usar a URL completa do backend no Render
-const API_URL = import.meta.env.VITE_API_URL || 'https://organizados-portal.onrender.com/api';
+// FORÇAR a URL do backend no Render
+const API_URL = 'https://organizados-portal.onrender.com/api';
 
 console.log('🔗 API URL:', API_URL);
 
