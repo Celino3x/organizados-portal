@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'organizados_secret_key';
 
 // ============================================
-// CONFIGURAÇÃO CORS
+// CONFIGURAÇÃO CORS - PERMITIR TODAS AS ORIGENS
 // ============================================
 app.use(cors({
   origin: '*',
@@ -55,6 +55,7 @@ app.get('/', (req, res) => {
         verify: 'GET /api/auth/verify'
       },
       users: '/api/users',
+      'users-test': '/api/users-test',
       designations: '/api/designations'
     }
   });
@@ -73,6 +74,36 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     database: 'PostgreSQL via Prisma'
   });
+});
+
+// ============================================
+// ROTA DE TESTE PARA USUÁRIOS (SEM AUTENTICAÇÃO)
+// ============================================
+app.get('/api/users-test', async (req, res) => {
+  try {
+    console.log('📤 GET /api/users-test (rota simplificada)');
+    
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        congregation: true,
+        phone: true,
+        isActive: true
+      },
+      orderBy: { name: 'asc' }
+    });
+    
+    console.log(`✅ ${users.length} usuários encontrados (teste)`);
+    res.json(users);
+  } catch (error) {
+    console.error('❌ Erro na rota de teste:', error);
+    res.status(500).json({ 
+      error: 'Erro na rota de teste',
+      details: error.message 
+    });
+  }
 });
 
 // ============================================
@@ -260,7 +291,7 @@ app.get('/api/auth/verify', async (req, res) => {
 });
 
 // ============================================
-// ROTAS DE USUÁRIOS - CORRIGIDAS
+// ROTAS DE USUÁRIOS - CORRIGIDAS (SEM cellphone)
 // ============================================
 
 // Middleware de autenticação
@@ -305,7 +336,6 @@ app.get('/api/users', authenticate, authorizeAdmin, async (req, res) => {
         email: true,
         congregation: true,
         phone: true,
-        // cellphone REMOVIDO - não existe no schema
         address: true,
         birthDate: true,
         baptismDate: true,
@@ -343,7 +373,6 @@ app.get('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
         email: true,
         congregation: true,
         phone: true,
-        // cellphone REMOVIDO
         address: true,
         birthDate: true,
         baptismDate: true,
@@ -411,7 +440,6 @@ app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
         password: hashedPassword,
         congregation,
         phone: phone || null,
-        // cellphone REMOVIDO
         address: address || null,
         birthDate: birthDate || null,
         baptismDate: baptismDate || null,
@@ -480,7 +508,6 @@ app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
       email: email || existingUser.email,
       congregation: congregation || existingUser.congregation,
       phone: phone !== undefined ? phone : existingUser.phone,
-      // cellphone REMOVIDO
       address: address !== undefined ? address : existingUser.address,
       birthDate: birthDate !== undefined ? birthDate : existingUser.birthDate,
       baptismDate: baptismDate !== undefined ? baptismDate : existingUser.baptismDate,
@@ -529,10 +556,11 @@ app.delete('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
 });
 
 // ============================================
-// ROTAS DE DESIGNAÇÕES
+// ROTA DE DESIGNAÇÕES SIMPLIFICADA
 // ============================================
-//const designationRoutes = require('./routes/designationRoutes');
-//app.use('/api/designations', designationRoutes);
+// const designationRoutes = require('./routes/designationRoutes');
+// app.use('/api/designations', designationRoutes);
+
 app.get('/api/designations', (req, res) => {
   res.json({ message: 'Designações - em desenvolvimento' });
 });
@@ -546,6 +574,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📍 Registro: POST http://localhost:${PORT}/api/auth/register`);
   console.log(`📍 Login: POST http://localhost:${PORT}/api/auth/login`);
   console.log(`📍 Designações: http://localhost:${PORT}/api/designations`);
+  console.log(`📍 Teste Users: http://localhost:${PORT}/api/users-test`);
   console.log(`\n📝 Credenciais padrão:`);
   console.log(`   Email: admin@organizados.com`);
   console.log(`   Senha: Portal@Org2026#Seguro\n`);
