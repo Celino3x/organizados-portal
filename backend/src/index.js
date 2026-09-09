@@ -1,18 +1,23 @@
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
-require('dotenv').config();
+const dotenv = require('dotenv');
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-// Importar rotas
-const userRoutes = require('./routes/userRoutes');
+dotenv.config();
 
+const prisma = new PrismaClient();
 const app = express();
+const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || 'organizados_secret_key';
 
 // ============================================
-// CONFIGURAÇÃO DO CORS
+// CONFIGURAÇÃO CORS
 // ============================================
 app.use(cors({
   origin: '*',
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
@@ -29,285 +34,523 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// ============================================
-// ROTA DE TESTE CORS
-// ============================================
-app.options('/api/test-cors', (req, res) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.sendStatus(200);
-});
-
-app.get('/api/test-cors', (req, res) => {
-  res.json({ message: 'CORS funcionando!' });
-});
+console.log('🔥 Servidor iniciando...');
+console.log('🌐 CORS: Permitindo todas as origens');
+console.log('🗄️  Banco: PostgreSQL via Prisma');
 
 // ============================================
-// ROTAS DIRETAS
+// ROTA RAIZ
 // ============================================
-
 app.get('/', (req, res) => {
   res.json({ 
     message: '🚀 Portal Organizados API',
     status: 'online',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      test: '/api/test',
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        verify: 'GET /api/auth/verify'
+      },
+      users: '/api/users',
+      designations: '/api/designations'
+    }
   });
+});
+
+// ============================================
+// ROTAS DE TESTE
+// ============================================
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API funcionando!', database: 'PostgreSQL' });
 });
 
 app.get('/api/health', (req, res) => {
   res.json({ 
-    status: 'OK', 
-    message: 'Portal Organizados API - Rodando!',
+    status: 'ok', 
     timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? 'Conectado' : 'Desconectado'
+    database: 'PostgreSQL via Prisma'
   });
 });
 
 // ============================================
-// ROTA DE REGISTRO
+// ROTAS DE AUTENTICAÇÃO
 // ============================================
+
+// Registrar usuário
 app.post('/api/auth/register', async (req, res) => {
+  console.log('📝 POST /api/auth/register');
+  console.log('Body recebido:', req.body);
+  
   try {
-    const { name, email, password, congregation, phone } = req.body;
-    
+    const { 
+      name, 
+      email, 
+      password, 
+      congregation,
+      phone,
+      cellphone,
+      address,
+      birthDate,
+      baptismDate,
+      class: userClass,
+      gender,
+      privileges
+    } = req.body;
+
     if (!name || !email || !password || !congregation) {
       return res.status(400).json({ 
-        success: false, 
-        message: 'Nome, email, senha e congregação são obrigatórios' 
+        error: 'Nome, email, senha e congregação são obrigatórios'
       });
     }
 
-    let User;
-    try {
-      User = require('./models/User');
-    } catch (e) {
-      return res.status(201).json({ 
-        success: true, 
-        message: 'Usuário criado com sucesso (modo simulado - sem banco)!',
-        data: { name, email, congregation }
-      });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'E-mail já cadastrado'
-      });
-    }
-
-    const bcrypt = require('bcryptjs');
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      congregation,
-      phone: phone || null
+    const existingUser = await prisma.user.findUnique({ 
+      where: { email } 
     });
+    
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
 
-    res.status(201).json({
-      success: true,
-      message: 'Usuário criado com sucesso!',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        congregation: user.congregation
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        congregation,
+        phone: phone || null,
+        cellphone: cellphone || null,
+        address: address || null,
+        birthDate: birthDate || null,
+        baptismDate: baptismDate || null,
+        class: userClass || 'Outras Ovelhas',
+        gender: gender || 'male',
+        accessLevel: 'admin',
+        privileges: privileges || ['publisher']
       }
     });
-  } catch (error) {
-    console.error('Erro no registro:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao registrar usuário: ' + error.message 
-    });
-  }
-});
 
-// ============================================
-// ROTA DE LOGIN
-// ============================================
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email e senha são obrigatórios'
-      });
-    }
+    console.log('✅ Usuário criado:', user.email);
 
-    // Credenciais de teste
-    if (email === 'admin@organizados.com' && password === 'Admin@123') {
-      return res.json({
-        success: true,
-        token: 'token_simulado_' + Date.now(),
-        user: {
-          id: '123',
-          name: 'Admin Teste',
-          email: 'admin@organizados.com',
-          congregation: 'Vilar Guanabara',
-          role: 'admin',
-          accessLevel: 'admin'
-        }
-      });
-    }
-
-    let User;
-    try {
-      User = require('./models/User');
-    } catch (e) {
-      return res.status(401).json({
-        success: false,
-        message: 'Credenciais inválidas'
-      });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Credenciais inválidas'
-      });
-    }
-
-    const bcrypt = require('bcryptjs');
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({
-        success: false,
-        message: 'Credenciais inválidas'
-      });
-    }
-
-    const jwt = require('jsonwebtoken');
     const token = jwt.sign(
-      { id: user._id, email: user.email },
-      process.env.JWT_SECRET || 'organizados_secret',
+      { id: user.id, email: user.email, accessLevel: user.accessLevel },
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    user.lastLogin = new Date();
-    await user.save();
-
-    res.json({
-      success: true,
+    res.status(201).json({
       token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
-        congregation: user.congregation
+        accessLevel: user.accessLevel,
+        privileges: user.privileges
       }
     });
   } catch (error) {
-    console.error('Erro no login:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao fazer login: ' + error.message
-    });
+    console.error('❌ Erro no registro:', error);
+    res.status(500).json({ error: 'Erro ao criar usuário: ' + error.message });
   }
 });
 
-// ============================================
-// ROTA DE PERFIL
-// ============================================
-app.get('/api/auth/profile', async (req, res) => {
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  console.log('🔑 POST /api/auth/login');
+  console.log('Email:', req.body.email);
+  
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    }
+
+    const user = await prisma.user.findUnique({ 
+      where: { email } 
+    });
     
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token não fornecido'
-      });
-    }
-
-    if (token.startsWith('token_simulado_')) {
-      return res.json({
-        success: true,
-        user: {
-          id: '123',
-          name: 'Admin Teste',
-          email: 'admin@organizados.com',
-          congregation: 'Vilar Guanabara',
-          role: 'admin'
-        }
-      });
-    }
-
-    let User;
-    try {
-      User = require('./models/User');
-    } catch (e) {
-      return res.status(401).json({
-        success: false,
-        message: 'Usuário não encontrado'
-      });
-    }
-
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'organizados_secret');
-    const user = await User.findById(decoded.id).select('-password');
-
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuário não encontrado'
-      });
+      console.log('❌ Usuário não encontrado:', email);
+      return res.status(401).json({ error: 'Email ou senha inválidos' });
     }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      console.log('❌ Senha inválida para:', email);
+      return res.status(401).json({ error: 'Email ou senha inválidos' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, accessLevel: user.accessLevel },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log('✅ Login bem-sucedido:', email);
 
     res.json({
-      success: true,
-      user
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        accessLevel: user.accessLevel,
+        privileges: user.privileges
+      }
     });
   } catch (error) {
-    res.status(401).json({
-      success: false,
-      message: 'Token inválido'
+    console.error('❌ Erro no login:', error);
+    res.status(500).json({ error: 'Erro ao fazer login' });
+  }
+});
+
+// Verificação de Token
+app.get('/api/auth/verify', async (req, res) => {
+  console.log('🔍 GET /api/auth/verify');
+  
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      console.log('❌ Token não fornecido');
+      return res.status(401).json({ error: 'Token não fornecido' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('✅ Token decodificado:', decoded.email);
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        congregation: true,
+        phone: true,
+        cellphone: true,
+        address: true,
+        birthDate: true,
+        baptismDate: true,
+        class: true,
+        gender: true,
+        accessLevel: true,
+        privileges: true,
+        isActive: true
+      }
     });
+
+    if (!user) {
+      console.log('❌ Usuário não encontrado');
+      return res.status(401).json({ error: 'Usuário inválido' });
+    }
+
+    if (!user.isActive) {
+      console.log('❌ Usuário inativo');
+      return res.status(401).json({ error: 'Usuário inativo' });
+    }
+
+    console.log('✅ Token válido para:', user.email);
+    res.json({ valid: true, user });
+  } catch (error) {
+    console.error('❌ Erro na verificação:', error);
+    res.status(401).json({ error: 'Token inválido' });
   }
 });
 
 // ============================================
-// ROTAS DE USUÁRIOS (CRUD)
+// ROTAS DE USUÁRIOS
 // ============================================
-app.use('/api/users', userRoutes);
+
+// Middleware de autenticação
+const authenticate = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Token não fornecido' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Token inválido' });
+  }
+};
+
+// Middleware de autorização (apenas admin)
+const authorizeAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Não autenticado' });
+  }
+
+  if (req.user.accessLevel !== 'admin') {
+    return res.status(403).json({ error: 'Acesso negado. Apenas administradores.' });
+  }
+
+  next();
+};
+
+// Listar todos os usuários
+app.get('/api/users', authenticate, authorizeAdmin, async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        congregation: true,
+        phone: true,
+        cellphone: true,
+        address: true,
+        birthDate: true,
+        baptismDate: true,
+        class: true,
+        gender: true,
+        accessLevel: true,
+        privileges: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
+      },
+      orderBy: { name: 'asc' }
+    });
+    res.json(users);
+  } catch (error) {
+    console.error('❌ Erro ao listar usuários:', error);
+    res.status(500).json({ error: 'Erro ao listar usuários' });
+  }
+});
+
+// Buscar usuário por ID
+app.get('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        congregation: true,
+        phone: true,
+        cellphone: true,
+        address: true,
+        birthDate: true,
+        baptismDate: true,
+        class: true,
+        gender: true,
+        accessLevel: true,
+        privileges: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('❌ Erro ao buscar usuário:', error);
+    res.status(500).json({ error: 'Erro ao buscar usuário' });
+  }
+});
+
+// Criar usuário
+app.post('/api/users', authenticate, authorizeAdmin, async (req, res) => {
+  try {
+    const { 
+      name, 
+      email, 
+      password, 
+      congregation,
+      phone,
+      cellphone,
+      address,
+      birthDate,
+      baptismDate,
+      class: userClass,
+      gender,
+      accessLevel,
+      privileges,
+      isActive 
+    } = req.body;
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+
+    if (gender === 'female') {
+      const invalidPrivileges = ['ministerial', 'elder'];
+      const hasInvalid = (privileges || []).some(p => invalidPrivileges.includes(p));
+      if (hasInvalid) {
+        return res.status(400).json({ 
+          error: 'Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos' 
+        });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        congregation,
+        phone: phone || null,
+        cellphone: cellphone || null,
+        address: address || null,
+        birthDate: birthDate || null,
+        baptismDate: baptismDate || null,
+        class: userClass || 'Outras Ovelhas',
+        gender: gender || 'male',
+        accessLevel: accessLevel || 'viewer',
+        privileges: privileges || ['publisher'],
+        isActive: isActive !== undefined ? isActive : true
+      }
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+    console.log('✅ Usuário criado pelo admin:', user.email);
+    res.status(201).json(userWithoutPassword);
+  } catch (error) {
+    console.error('❌ Erro ao criar usuário:', error);
+    res.status(500).json({ error: 'Erro ao criar usuário: ' + error.message });
+  }
+});
+
+// Atualizar usuário
+app.put('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      name, 
+      email, 
+      password, 
+      congregation,
+      phone,
+      cellphone,
+      address,
+      birthDate,
+      baptismDate,
+      class: userClass,
+      gender,
+      accessLevel,
+      privileges,
+      isActive 
+    } = req.body;
+
+    const existingUser = await prisma.user.findUnique({ where: { id: Number(id) } });
+    if (!existingUser) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    if (email && email !== existingUser.email) {
+      const emailTaken = await prisma.user.findUnique({ where: { email } });
+      if (emailTaken) {
+        return res.status(400).json({ error: 'Email já está em uso' });
+      }
+    }
+
+    const userGender = gender || existingUser.gender;
+    if (userGender === 'female') {
+      const invalidPrivileges = ['ministerial', 'elder'];
+      const hasInvalid = (privileges || existingUser.privileges).some(p => invalidPrivileges.includes(p));
+      if (hasInvalid) {
+        return res.status(400).json({ 
+          error: 'Mulheres não podem ser designadas como Servos Ministeriais ou Anciãos' 
+        });
+      }
+    }
+
+    const updateData = {
+      name: name || existingUser.name,
+      email: email || existingUser.email,
+      congregation: congregation || existingUser.congregation,
+      phone: phone !== undefined ? phone : existingUser.phone,
+      cellphone: cellphone !== undefined ? cellphone : existingUser.cellphone,
+      address: address !== undefined ? address : existingUser.address,
+      birthDate: birthDate !== undefined ? birthDate : existingUser.birthDate,
+      baptismDate: baptismDate !== undefined ? baptismDate : existingUser.baptismDate,
+      class: userClass !== undefined ? userClass : existingUser.class,
+      gender: gender || existingUser.gender,
+      accessLevel: accessLevel || existingUser.accessLevel,
+      privileges: privileges || existingUser.privileges,
+      isActive: isActive !== undefined ? isActive : existingUser.isActive
+    };
+
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: Number(id) },
+      data: updateData
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+    console.log('✅ Usuário atualizado:', user.email);
+    res.json(userWithoutPassword);
+  } catch (error) {
+    console.error('❌ Erro ao atualizar usuário:', error);
+    res.status(500).json({ error: 'Erro ao atualizar usuário: ' + error.message });
+  }
+});
+
+// Excluir usuário
+app.delete('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({ where: { id: Number(id) } });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    await prisma.user.delete({ where: { id: Number(id) } });
+    console.log('✅ Usuário excluído:', user.email);
+    res.json({ message: 'Usuário excluído com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao excluir usuário:', error);
+    res.status(500).json({ error: 'Erro ao excluir usuário' });
+  }
+});
 
 // ============================================
-// CONEXÃO COM MONGODB
+// ROTAS DE DESIGNAÇÕES
 // ============================================
-console.log('🔄 Tentando conectar ao MongoDB...');
-console.log(`📡 URI: ${process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:[^:]*@/, ':****@') : 'NÃO DEFINIDA'}`);
-
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('✅ Conectado ao MongoDB com sucesso!');
-    console.log(`📊 Banco de dados: ${mongoose.connection.db.databaseName}`);
-  })
-  .catch((err) => {
-    console.error('❌ Erro ao conectar ao MongoDB:', err.message);
-    console.log('⚠️ O servidor vai rodar mesmo sem MongoDB (modo limitado)');
-  });
+const designationRoutes = require('./routes/designationRoutes');
+app.use('/api/designations', designationRoutes);
 
 // ============================================
-// INICIAR SERVIDOR (CORRIGIDO PARA O RENDER)
+// INICIAR SERVIDOR
 // ============================================
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📍 http://localhost:${PORT}`);
   console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
   console.log(`📍 Registro: POST http://localhost:${PORT}/api/auth/register`);
   console.log(`📍 Login: POST http://localhost:${PORT}/api/auth/login`);
-  console.log(`📍 Usuários: GET/POST http://localhost:${PORT}/api/users`);
-  console.log(`📍 Teste CORS: GET http://localhost:${PORT}/api/test-cors`);
-  console.log(`\n📝 Credenciais de teste:`);
+  console.log(`📍 Designações: http://localhost:${PORT}/api/designations`);
+  console.log(`\n📝 Credenciais padrão:`);
   console.log(`   Email: admin@organizados.com`);
-  console.log(`   Senha: Admin@123\n`);
+  console.log(`   Senha: Portal@Org2026#Seguro\n`);
+});
+
+// Tratamento de erros
+process.on('unhandledRejection', (err) => {
+  console.error('❌ Erro não tratado:', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('❌ Exceção não capturada:', err);
 });
