@@ -1,0 +1,20 @@
+[33me566cc3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m fix: CORS robusto permitindo todas as origens
+[33m273f36f[m fix: ajustar centralização e zoom do Google My Maps
+[33m7d3ae6e[m fix: corrigir CORS para aceitar todas as origens
+[33mb9d797d[m fix: garantir que setUser seja uma função no AuthContext
+[33mf60fa97[m fix: adicionar setUser após login para atualizar o contexto
+[33m8e77727[m fix: login usando axios diretamente com URL do Render
+[33me4c45a8[m fix: corrigir buildCommand do vercel.json
+[33mf132486[m fix: corrigir roteamento da API e forçar URL do backend
+[33me9a3468[m fix: forçar URL do backend no frontend
+[33mceba40f[m fix: substituir MongoDB por PostgreSQL com Prisma
+[33mbe5aabf[m fix: remover cd frontend do vercel.json
+[33m0bdeccf[m fix: forçar URL do backend no frontend
+[33m3d428a1[m fix: limpar arquivo territories.ts removendo funções duplicadas
+[33m584f04c[m fix: corrigir importações dos territórios usando getAllTerritories
+[33m6413de2[m feat: adicionar TerritoryWorkerTest e TerritoryWorkerPublic
+[33m967efdc[m feat: adicionar TerritoryWorkerPublic para compartilhamento
+[33m9696a72[m fix: atualizar Layout com container-custom e menu responsivo
+[33mc9ff076[m feat: adicionar rotas de designações e territórios públicos
+[33mb0c1849[m Fix: Remover rootDirectory do vercel.json
+[33mf451c91[m Fix: Configurar rootDirectory no vercel.json

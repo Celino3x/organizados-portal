@@ -526,11 +526,7 @@ app.delete('/api/users/:id', authenticate, authorizeAdmin, async (req, res) => {
   }
 });
 
-// ============================================
-// ROTAS DE DESIGNAÇÕES
-// ============================================
-const designationRoutes = require('./routes/designationRoutes');
-app.use('/api/designations', designationRoutes);
+
 
 // ============================================
 // INICIAR SERVIDOR
