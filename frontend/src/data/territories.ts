@@ -1347,6 +1347,10 @@ export const TERRITORIES_DATA: Record<string, Territory> = {
   }
 };
 
+// ============================================
+// FUNÇÕES DE ACESSO AOS DADOS
+// ============================================
+
 export const getAllTerritories = (): Territory[] => {
   return Object.values(TERRITORIES_DATA);
 };
@@ -1361,4 +1365,56 @@ export const getTerritoriesByStatus = (status: Territory['status']): Territory[]
 
 export const getTerritoriesByGroup = (group: string): Territory[] => {
   return Object.values(TERRITORIES_DATA).filter(t => t.group === group);
+};
+
+export const getTerritoriesByType = (type: string): Territory[] => {
+  return Object.values(TERRITORIES_DATA).filter(t => t.type === type);
+};
+
+// ============================================
+// FUNÇÕES DE UTILIDADE PARA O FRONTEND
+// ============================================
+
+export const getStatusLabel = (status: string): string => {
+  const map: Record<string, string> = {
+    available: 'Disponível',
+    assigned: 'Designado',
+    in_progress: 'Em Andamento',
+    completed: 'Concluído'
+  };
+  return map[status] || status;
+};
+
+export const getStatusBadge = (status: string): string => {
+  const map: Record<string, string> = {
+    available: 'badge-green',
+    assigned: 'badge-yellow',
+    in_progress: 'badge-blue',
+    completed: 'badge-purple'
+  };
+  return map[status] || 'badge-gray';
+};
+
+export const getTypeLabel = (type: string): string => {
+  const map: Record<string, string> = {
+    residential: 'Residencial',
+    commercial: 'Comercial',
+    mixed: 'Misto',
+    condominium: 'Condomínio'
+  };
+  return map[type] || type;
+};
+
+export const getGroupColor = (group: string): string => {
+  const map: Record<string, string> = {
+    'Cosmos 1': 'text-blue-600 dark:text-blue-400',
+    'Cosmos 2': 'text-green-600 dark:text-green-400',
+    'Cosmos 3': 'text-yellow-600 dark:text-yellow-400',
+    'Cosmos 4': 'text-purple-600 dark:text-purple-400',
+    'Icurana 1': 'text-red-600 dark:text-red-400',
+    'Icurana 2': 'text-pink-600 dark:text-pink-400',
+    'Vilar Guanabara 1': 'text-indigo-600 dark:text-indigo-400',
+    'Vilar Guanabara 2': 'text-teal-600 dark:text-teal-400'
+  };
+  return map[group] || 'text-gray-600 dark:text-gray-400';
 };
