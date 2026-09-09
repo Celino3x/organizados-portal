@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await api.post('/auth/login', data);
       const result = response.data;
 
-      if (result.success && result.token) {
+      if (result.token && result.user) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
         setUser(result.user);
@@ -49,7 +49,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error(result.message || 'Erro ao fazer login');
       }
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Erro ao fazer login');
+      throw new Error(
+  error.response?.data?.error ||
+  error.response?.data?.message ||
+  'Erro ao fazer login'
+);
     } finally {
       setLoading(false);
     }
